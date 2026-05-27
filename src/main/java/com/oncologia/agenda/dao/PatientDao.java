@@ -15,11 +15,9 @@ import java.util.Optional;
 public class PatientDao {
     public List<Patient> search(String query) {
         String like = "%" + (query == null ? "" : query.trim().toLowerCase()) + "%";
-        String sql = """
-                SELECT * FROM patients
-                WHERE LOWER(first_name) LIKE ? OR LOWER(last_name) LIKE ? OR dni LIKE ?
-                ORDER BY last_name, first_name
-                """;
+        String sql = "SELECT * FROM patients "
+                + "WHERE LOWER(first_name) LIKE ? OR LOWER(last_name) LIKE ? OR dni LIKE ? "
+                + "ORDER BY last_name, first_name";
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, like);
@@ -69,11 +67,9 @@ public class PatientDao {
     }
 
     private Patient insert(Patient patient) {
-        String sql = """
-                INSERT INTO patients
-                (first_name, last_name, dni, insurance, diagnosis, protocol, allergies, emergency_contact, neutropenic, fever)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """;
+        String sql = "INSERT INTO patients "
+                + "(first_name, last_name, dni, insurance, diagnosis, protocol, allergies, emergency_contact, neutropenic, fever) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             fill(statement, patient);
@@ -90,12 +86,10 @@ public class PatientDao {
     }
 
     private void update(Patient patient) {
-        String sql = """
-                UPDATE patients
-                SET first_name = ?, last_name = ?, dni = ?, insurance = ?, diagnosis = ?, protocol = ?,
-                    allergies = ?, emergency_contact = ?, neutropenic = ?, fever = ?
-                WHERE id = ?
-                """;
+        String sql = "UPDATE patients "
+                + "SET first_name = ?, last_name = ?, dni = ?, insurance = ?, diagnosis = ?, protocol = ?, "
+                + "allergies = ?, emergency_contact = ?, neutropenic = ?, fever = ? "
+                + "WHERE id = ?";
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             fill(statement, patient);

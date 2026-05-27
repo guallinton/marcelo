@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.sql.Date;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -20,18 +21,9 @@ import java.util.Optional;
 
 public class AppointmentDao {
     public List<Appointment> findBetween(LocalDate from, LocalDate to) {
-        String sql = """
-                SELECT a.*, p.first_name, p.last_name, p.dni, p.insurance, p.diagnosis, p.protocol,
-                       p.allergies, p.emergency_contact, p.neutropenic, p.fever,
-                       d.username doctor_username, d.password doctor_password, d.full_name doctor_name, d.role doctor_role,
-                       c.username creator_username, c.password creator_password, c.full_name creator_name, c.role creator_role
-                FROM appointments a
-                JOIN patients p ON p.id = a.patient_id
-                JOIN users d ON d.id = a.doctor_id
-                JOIN users c ON c.id = a.created_by
-                WHERE a.start_time >= ? AND a.start_time < ?
-                ORDER BY a.start_time, a.bed_chair
-                """;
+        String sql = appointmentSelect()
+                + " WHERE a.start_time >= ? AND a.start_time < ?"
+                + " ORDER BY a.start_time, a.bed_chair";
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setTimestamp(1, Timestamp.valueOf(from.atStartOfDay()));
@@ -77,14 +69,12 @@ public class AppointmentDao {
     }
 
     public boolean patientHasAppointmentOnDate(long patientId, LocalDate date, long ignoreAppointmentId) {
-        String sql = """
-                SELECT COUNT(*) FROM appointments
-                WHERE patient_id = ? AND CAST(start_time AS DATE) = ? AND id <> ?
-                """;
+        String sql = "SELECT COUNT(*) FROM appointments "
+                + "WHERE patient_id = ? AND CAST(start_time AS DATE) = ? AND id <> ?";
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setLong(1, patientId);
-            statement.setObject(2, date);
+            statement.setDate(2, Date.valueOf(date));
             statement.setLong(3, ignoreAppointmentId);
             try (ResultSet rs = statement.executeQuery()) {
                 return rs.next() && rs.getInt(1) > 0;
@@ -95,20 +85,11 @@ public class AppointmentDao {
     }
 
     public List<Appointment> findOverlaps(int bedChair, LocalDateTime start, LocalDateTime endWithCleaning, long ignoreAppointmentId) {
-        String sql = """
-                SELECT a.*, p.first_name, p.last_name, p.dni, p.insurance, p.diagnosis, p.protocol,
-                       p.allergies, p.emergency_contact, p.neutropenic, p.fever,
-                       d.username doctor_username, d.password doctor_password, d.full_name doctor_name, d.role doctor_role,
-                       c.username creator_username, c.password creator_password, c.full_name creator_name, c.role creator_role
-                FROM appointments a
-                JOIN patients p ON p.id = a.patient_id
-                JOIN users d ON d.id = a.doctor_id
-                JOIN users c ON c.id = a.created_by
-                WHERE a.bed_chair = ?
-                  AND a.id <> ?
-                  AND a.start_time < ?
-                  AND DATEADD('MINUTE', a.duration_minutes + 15, a.start_time) > ?
-                """;
+        String sql = appointmentSelect()
+                + " WHERE a.bed_chair = ?"
+                + " AND a.id <> ?"
+                + " AND a.start_time < ?"
+                + " AND DATEADD('MINUTE', a.duration_minutes + 15, a.start_time) > ?";
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, bedChair);
@@ -128,18 +109,15 @@ public class AppointmentDao {
     }
 
     public List<Patient> findPatientsWithoutAppointment(LocalDate from, LocalDate to) {
-        String sql = """
-                SELECT * FROM patients p
-                WHERE NOT EXISTS (
-                    SELECT 1 FROM appointments a
-                    WHERE a.patient_id = p.id AND CAST(a.start_time AS DATE) BETWEEN ? AND ?
-                )
-                ORDER BY p.last_name, p.first_name
-                """;
+        String sql = "SELECT * FROM patients p "
+                + "WHERE NOT EXISTS ("
+                + "SELECT 1 FROM appointments a "
+                + "WHERE a.patient_id = p.id AND CAST(a.start_time AS DATE) BETWEEN ? AND ?"
+                + ") ORDER BY p.last_name, p.first_name";
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setObject(1, from);
-            statement.setObject(2, to);
+            statement.setDate(1, Date.valueOf(from));
+            statement.setDate(2, Date.valueOf(to));
             try (ResultSet rs = statement.executeQuery()) {
                 List<Patient> patients = new ArrayList<>();
                 while (rs.next()) {
@@ -153,10 +131,8 @@ public class AppointmentDao {
     }
 
     private Appointment insert(Appointment appointment) {
-        String sql = """
-                INSERT INTO appointments (patient_id, doctor_id, created_by, start_time, duration_minutes, bed_chair)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """;
+        String sql = "INSERT INTO appointments (patient_id, doctor_id, created_by, start_time, duration_minutes, bed_chair) "
+                + "VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             fill(statement, appointment);
@@ -173,11 +149,9 @@ public class AppointmentDao {
     }
 
     private void update(Appointment appointment) {
-        String sql = """
-                UPDATE appointments
-                SET patient_id = ?, doctor_id = ?, created_by = ?, start_time = ?, duration_minutes = ?, bed_chair = ?
-                WHERE id = ?
-                """;
+        String sql = "UPDATE appointments "
+                + "SET patient_id = ?, doctor_id = ?, created_by = ?, start_time = ?, duration_minutes = ?, bed_chair = ? "
+                + "WHERE id = ?";
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             fill(statement, appointment);
@@ -195,6 +169,17 @@ public class AppointmentDao {
         statement.setTimestamp(4, Timestamp.valueOf(appointment.getStart()));
         statement.setInt(5, appointment.getDurationMinutes());
         statement.setInt(6, appointment.getBedChair());
+    }
+
+    private String appointmentSelect() {
+        return "SELECT a.*, p.first_name, p.last_name, p.dni, p.insurance, p.diagnosis, p.protocol,"
+                + " p.allergies, p.emergency_contact, p.neutropenic, p.fever,"
+                + " d.username doctor_username, d.password doctor_password, d.full_name doctor_name, d.role doctor_role,"
+                + " c.username creator_username, c.password creator_password, c.full_name creator_name, c.role creator_role"
+                + " FROM appointments a"
+                + " JOIN patients p ON p.id = a.patient_id"
+                + " JOIN users d ON d.id = a.doctor_id"
+                + " JOIN users c ON c.id = a.created_by";
     }
 
     private Appointment map(ResultSet rs) throws SQLException {

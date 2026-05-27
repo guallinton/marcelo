@@ -28,7 +28,7 @@ public class ReportService {
             writer.line("Semana: " + DATE.format(weekStart) + " al " + DATE.format(weekStart.plusDays(6)));
             writer.blank();
             for (Appointment appointment : appointments) {
-                writer.line("%s %s - %s | %s | Medico: %s | %d min | Cama/Butaca %d".formatted(
+                writer.line(String.format("%s %s - %s | %s | Medico: %s | %d min | Cama/Butaca %d",
                         DATE.format(appointment.getStart().toLocalDate()),
                         TIME.format(appointment.getStart()),
                         appointment.getPatient().getFullName(),
@@ -55,14 +55,15 @@ public class ReportService {
                 writer.line("Sin pacientes pendientes.");
             } else {
                 for (Patient patient : pending) {
-                    writer.line("- %s | DNI %s | %s".formatted(patient.getFullName(), patient.getDni(), patient.getProtocol().getLabel()));
+                    writer.line(String.format("- %s | DNI %s | %s", patient.getFullName(), patient.getDni(), patient.getProtocol().getLabel()));
                 }
             }
             writer.blank();
             writer.subtitle("Ocupacion por dia");
             LocalDate cursor = from;
             while (!cursor.isAfter(to)) {
-                writer.line("%s: %d turno(s)".formatted(DATE.format(cursor), occupancy.getOrDefault(cursor, 0L)));
+                Long count = occupancy.containsKey(cursor) ? occupancy.get(cursor) : 0L;
+                writer.line(String.format("%s: %d turno(s)", DATE.format(cursor), count));
                 cursor = cursor.plusDays(1);
             }
             writer.close();

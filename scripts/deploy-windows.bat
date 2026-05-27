@@ -14,7 +14,7 @@ if exist "mvnw.cmd" (
 echo Compilando aplicacion...
 call %MVN_CMD% -q -DskipTests package dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=%DIST%\lib
 if errorlevel 1 (
-    echo Error al compilar. Verifique Java 17+ en PATH.
+    echo Error al compilar. Verifique Java 8+ en PATH.
     exit /b 1
 )
 

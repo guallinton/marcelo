@@ -102,7 +102,7 @@ public class Patient {
     }
 
     public String getFullName() {
-        return "%s %s".formatted(nullToEmpty(firstName), nullToEmpty(lastName)).trim();
+        return (nullToEmpty(firstName) + " " + nullToEmpty(lastName)).trim();
     }
 
     public String getRiskText() {

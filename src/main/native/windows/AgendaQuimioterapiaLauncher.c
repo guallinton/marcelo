@@ -67,7 +67,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previousInstance, PWSTR comman
     if (!started) {
         MessageBoxW(
                 NULL,
-                L"No se pudo iniciar Java. Instale Java 17 o superior y vuelva a abrir AgendaQuimioterapia.exe.",
+                L"No se pudo iniciar Java. Instale Java 8 o superior y vuelva a abrir AgendaQuimioterapia.exe.",
                 L"Agenda Quimioterapia",
                 MB_ICONERROR
         );

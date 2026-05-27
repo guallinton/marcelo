@@ -1,29 +1,25 @@
 package com.oncologia.agenda;
 
-import com.oncologia.agenda.controller.LoginController;
+import com.formdev.flatlaf.FlatLightLaf;
+import com.oncologia.agenda.controller.SwingLoginFrame;
 import com.oncologia.agenda.dao.Database;
-import javafx.application.Application;
-import javafx.scene.image.Image;
-import javafx.stage.Stage;
 
-import java.io.InputStream;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
-public class AgendaApplication extends Application {
-    @Override
-    public void start(Stage primaryStage) {
-        Database.initialize();
-        primaryStage.setTitle("Agenda Oncologica - Quimioterapia");
-        InputStream iconStream = getClass().getResourceAsStream("/icons/app-icon.png");
-        if (iconStream != null) {
-            Image icon = new Image(iconStream);
-            if (!icon.isError()) {
-                primaryStage.getIcons().add(icon);
-            }
-        }
-        new LoginController().show(primaryStage);
-    }
-
+public class AgendaApplication {
     public static void main(String[] args) {
-        launch(args);
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    UIManager.setLookAndFeel(new FlatLightLaf());
+                } catch (Exception ignored) {
+                    // Swing falls back to the platform look and feel if FlatLaf cannot initialize.
+                }
+                Database.initialize();
+                new SwingLoginFrame().setVisible(true);
+            }
+        });
     }
 }
