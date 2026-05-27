@@ -23,6 +23,9 @@ if not exist "%APPDIR%\lib" mkdir "%APPDIR%\lib"
 
 copy /Y "target\%JAR%" "%APPDIR%\%JAR%" >nul
 xcopy /E /I /Y "%DIST%\lib" "%APPDIR%\lib" >nul
+if exist "%DIST%\AgendaQuimioterapia.exe" (
+    copy /Y "%DIST%\AgendaQuimioterapia.exe" "%APPDIR%\AgendaQuimioterapia.exe" >nul
+)
 
 (
     echo @echo off
@@ -33,6 +36,10 @@ xcopy /E /I /Y "%DIST%\lib" "%APPDIR%\lib" >nul
 echo.
 echo Despliegue completado en:
 echo %APPDIR%
-echo Ejecute run-agenda.bat para iniciar la agenda.
+if exist "%APPDIR%\AgendaQuimioterapia.exe" (
+    echo Ejecute AgendaQuimioterapia.exe para iniciar la agenda.
+) else (
+    echo Ejecute run-agenda.bat para iniciar la agenda.
+)
 
 endlocal

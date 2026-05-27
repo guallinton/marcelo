@@ -39,8 +39,10 @@ C:\Users\metas.asistenciales\Desktop\cursor\agenda-quimioterapia
 Luego iniciar con:
 
 ```bat
-C:\Users\metas.asistenciales\Desktop\cursor\agenda-quimioterapia\run-agenda.bat
+C:\Users\metas.asistenciales\Desktop\cursor\agenda-quimioterapia\AgendaQuimioterapia.exe
 ```
+
+Tambien se incluye `run-agenda.bat` como alternativa.
 
 ## Funcionalidades principales
 
