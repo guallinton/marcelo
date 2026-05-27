@@ -392,13 +392,17 @@ public class MainController {
         }
         int row = 1;
         for (LocalTime time = config.getWorkStart(); time.isBefore(config.getWorkEnd()); time = time.plusMinutes(config.getSlotMinutes())) {
-            addHeader(TIME.format(time), 0, row);
+            LocalTime slotStart = time;
+            LocalTime slotEnd = time.plusMinutes(config.getSlotMinutes());
+            addHeader(TIME.format(slotStart), 0, row);
             for (int bed = 1; bed <= config.getBedCount(); bed++) {
                 int selectedBed = bed;
                 List<Appointment> appointments = currentAppointments.stream()
-                        .filter(a -> a.getBedChair() == selectedBed && a.getStart().toLocalDate().equals(date) && a.getStart().toLocalTime().equals(time))
+                        .filter(a -> a.getBedChair() == selectedBed && a.getStart().toLocalDate().equals(date)
+                                && !a.getStart().toLocalTime().isBefore(slotStart)
+                                && a.getStart().toLocalTime().isBefore(slotEnd))
                         .toList();
-                addCalendarCell(date.atTime(time), selectedBed, bed, row, appointments);
+                addCalendarCell(date.atTime(slotStart), selectedBed, bed, row, appointments);
             }
             row++;
         }
@@ -406,8 +410,12 @@ public class MainController {
     }
 
     private List<Appointment> appointmentsAt(LocalDate date, LocalTime time) {
+        ScheduleConfig config = scheduleService.getConfig();
+        LocalTime slotEnd = time.plusMinutes(config.getSlotMinutes());
         return currentAppointments.stream()
-                .filter(a -> a.getStart().toLocalDate().equals(date) && a.getStart().toLocalTime().equals(time))
+                .filter(a -> a.getStart().toLocalDate().equals(date)
+                        && !a.getStart().toLocalTime().isBefore(time)
+                        && a.getStart().toLocalTime().isBefore(slotEnd))
                 .toList();
     }
 
@@ -426,7 +434,7 @@ public class MainController {
         cell.setMaxWidth(Double.MAX_VALUE);
         if (appointments.isEmpty()) {
             cell.getStyleClass().add("calendar-cell-empty");
-            cell.setTooltip(new Tooltip("Crear turno en " + DATE.format(start.toLocalDate()) + " " + TIME.format(start)));
+            Tooltip.install(cell, new Tooltip("Crear turno en " + DATE.format(start.toLocalDate()) + " " + TIME.format(start)));
             cell.setOnMouseClicked(event -> openAppointmentDialog(null, start, bed == 0 ? 1 : bed));
         } else {
             for (Appointment appointment : appointments) {
