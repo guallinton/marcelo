@@ -5,11 +5,16 @@ set "TARGET=C:\Users\metas.asistenciales\Desktop\cursor"
 set "APPDIR=%TARGET%\agenda-quimioterapia"
 set "DIST=target\agenda-quimioterapia-dist"
 set "JAR=agenda-quimioterapia-1.0.0.jar"
+set "MVN_CMD=mvn"
+
+if exist "mvnw.cmd" (
+    set "MVN_CMD=mvnw.cmd"
+)
 
 echo Compilando aplicacion...
-call mvn -q -DskipTests package dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=%DIST%\lib
+call %MVN_CMD% -q -DskipTests package dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=%DIST%\lib
 if errorlevel 1 (
-    echo Error al compilar. Verifique Java 17+ y Maven en PATH.
+    echo Error al compilar. Verifique Java 17+ en PATH.
     exit /b 1
 )
 

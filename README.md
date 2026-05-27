@@ -5,12 +5,12 @@ Aplicacion de escritorio JavaFX para gestionar pacientes oncologicos y agenda de
 ## Requisitos
 
 - Java 17 o superior
-- Maven 3.9 o superior
+- Maven no es obligatorio para desplegar en Windows: el proyecto incluye Maven Wrapper (`mvnw.cmd`).
 
 ## Ejecutar en desarrollo
 
 ```bash
-mvn javafx:run
+./mvnw javafx:run
 ```
 
 Usuarios precargados:
@@ -27,6 +27,8 @@ En Windows, desde la raiz del proyecto, ejecutar:
 ```bat
 scripts\deploy-windows.bat
 ```
+
+El script usa `mvnw.cmd` automaticamente si esta disponible, por lo que solo necesita Java 17+ instalado.
 
 El script compila la aplicacion y la copia en:
 
