@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.0 - Agenda visual
+
+- La grilla de agenda marca como ocupado cada bloque horario cubierto por la duracion del turno.
+- Los turnos de 60 minutos o mas se muestran en todos los bloques correspondientes, con continuidad visual.
+- Se reemplaza la seleccion gris por tonos diferenciados para libre/ocupado/seleccionado.
+- Se armoniza la paleta visual con colores turquesa, lila y coral inspirados en el icono de referencia.
+
 ## 1.4.0 - Ficha paciente CI
 
 - Se reemplaza DNI por CI en la interfaz y reportes.

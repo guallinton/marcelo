@@ -77,10 +77,17 @@ import java.awt.image.BufferedImage;
 public class SwingMainFrame extends JFrame {
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
-    private static final Color SURFACE = new Color(245, 248, 252);
-    private static final Color CARD_BORDER = new Color(218, 226, 238);
-    private static final Color PRIMARY = new Color(31, 111, 235);
-    private static final Color MUTED = new Color(88, 103, 124);
+    private static final Color SURFACE = new Color(238, 250, 255);
+    private static final Color CARD_BORDER = new Color(190, 226, 238);
+    private static final Color PRIMARY = new Color(14, 181, 225);
+    private static final Color SECONDARY = new Color(205, 203, 250);
+    private static final Color ACCENT = new Color(255, 97, 122);
+    private static final Color MUTED = new Color(64, 79, 96);
+    private static final Color FREE_SLOT = new Color(232, 251, 245);
+    private static final Color BUSY_SLOT = new Color(225, 233, 255);
+    private static final Color BUSY_CONTINUATION = new Color(238, 232, 255);
+    private static final Color SELECTED_FREE = new Color(190, 242, 255);
+    private static final Color SELECTED_BUSY = new Color(255, 177, 187);
 
     private final User currentUser;
     private final PatientService patientService = new PatientService();
@@ -148,7 +155,7 @@ public class SwingMainFrame extends JFrame {
         JLabel role = new JLabel(currentUser.getRole().getLabel());
         role.setOpaque(true);
         role.setForeground(Color.WHITE);
-        role.setBackground(currentUser.getRole() == Role.ENFERMERIA ? PRIMARY : new Color(85, 112, 133));
+        role.setBackground(currentUser.getRole() == Role.ENFERMERIA ? PRIMARY : new Color(126, 116, 220));
         role.setBorder(new EmptyBorder(6, 12, 6, 12));
         JLabel user = new JLabel(currentUser.getFullName());
         user.setForeground(MUTED);
@@ -380,6 +387,7 @@ public class SwingMainFrame extends JFrame {
 
     private void styleSecondaryButton(JButton button) {
         button.putClientProperty("JButton.buttonType", "roundRect");
+        button.setBackground(SECONDARY);
     }
 
     private void refreshDoctors() {
@@ -796,10 +804,10 @@ public class SwingMainFrame extends JFrame {
             }
             Appointment appointment = appointmentAt(rowIndex, columnIndex);
             if (appointment == null) {
-                return "Libre";
+                return CalendarSlot.free();
             }
-            return appointment.getPatient().getFullName() + "\n" + appointment.getPatient().getProtocol().getLabel()
-                    + "\n" + appointment.getDoctor().getFullName() + " | Cama " + appointment.getBedChair();
+            LocalDateTime slotStart = startAt(rowIndex, columnIndex);
+            return new CalendarSlot(appointment, appointment.getStart().equals(slotStart));
         }
 
         public Appointment appointmentAt(int row, int column) {
@@ -807,13 +815,12 @@ public class SwingMainFrame extends JFrame {
                 return null;
             }
             LocalDateTime start = startAt(row, column);
-            LocalTime slotEnd = start.toLocalTime().plusMinutes(config.getSlotMinutes());
+            LocalDateTime slotEnd = start.plusMinutes(config.getSlotMinutes());
             for (Appointment appointment : appointments) {
                 boolean sameDate = appointment.getStart().toLocalDate().equals(start.toLocalDate());
-                boolean inSlot = !appointment.getStart().toLocalTime().isBefore(start.toLocalTime())
-                        && appointment.getStart().toLocalTime().isBefore(slotEnd);
+                boolean overlapsSlot = appointment.getStart().isBefore(slotEnd) && appointment.getEnd().isAfter(start);
                 boolean sameBed = weekly || appointment.getBedChair() == bedAt(column);
-                if (sameDate && inSlot && sameBed) {
+                if (sameDate && overlapsSlot && sameBed) {
                     return appointment;
                 }
             }
@@ -833,6 +840,49 @@ public class SwingMainFrame extends JFrame {
         }
     }
 
+    private static class CalendarSlot {
+        private final Appointment appointment;
+        private final boolean start;
+
+        private CalendarSlot(Appointment appointment, boolean start) {
+            this.appointment = appointment;
+            this.start = start;
+        }
+
+        static CalendarSlot free() {
+            return new CalendarSlot(null, false);
+        }
+
+        boolean isFree() {
+            return appointment == null;
+        }
+
+        boolean isStart() {
+            return start;
+        }
+
+        Appointment getAppointment() {
+            return appointment;
+        }
+
+        @Override
+        public String toString() {
+            if (isFree()) {
+                return "Libre";
+            }
+            if (start) {
+                return appointment.getPatient().getFullName()
+                        + "\n" + TIME.format(appointment.getStart()) + "-" + TIME.format(appointment.getEnd())
+                        + " | " + appointment.getDurationMinutes() + " min"
+                        + "\n" + appointment.getPatient().getProtocol().getLabel()
+                        + "\n" + appointment.getDoctor().getFullName() + " | Cama " + appointment.getBedChair();
+            }
+            return "Ocupado"
+                    + "\nhasta " + TIME.format(appointment.getEnd())
+                    + "\n" + appointment.getPatient().getFullName();
+        }
+    }
+
     private static class CalendarRenderer extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
@@ -840,12 +890,22 @@ public class SwingMainFrame extends JFrame {
             setHorizontalAlignment(column == 0 ? SwingConstants.CENTER : SwingConstants.LEFT);
             String text = value == null ? "" : value.toString();
             setText("<html>" + text.replace("\n", "<br>") + "</html>");
-            if (!isSelected && column > 0) {
-                if ("Libre".equals(text)) {
-                    component.setBackground(new Color(236, 248, 241));
-                } else {
-                    component.setBackground(new Color(224, 235, 255));
-                }
+            setBorder(new EmptyBorder(6, 8, 6, 8));
+            if (column == 0) {
+                component.setBackground(new Color(248, 251, 255));
+                component.setForeground(MUTED);
+                return component;
+            }
+            CalendarSlot slot = value instanceof CalendarSlot ? (CalendarSlot) value : CalendarSlot.free();
+            component.setForeground(new Color(31, 41, 55));
+            if (isSelected) {
+                component.setBackground(slot.isFree() ? SELECTED_FREE : SELECTED_BUSY);
+            } else if (slot.isFree()) {
+                component.setBackground(FREE_SLOT);
+            } else if (slot.isStart()) {
+                component.setBackground(BUSY_SLOT);
+            } else {
+                component.setBackground(BUSY_CONTINUATION);
             }
             return component;
         }
