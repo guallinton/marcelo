@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.8.0 - Agenda clinica visual
+
+- Se agrega sidebar visual de medicos con busqueda, iniciales, color identificador y filtro directo de agenda.
+- Se rediseña la grilla para reducir ruido: los slots disponibles quedan vacios, sin texto repetitivo.
+- Se mejoran las cards de turno con paciente, hora, duracion y medico.
+- Se agrega borde de color por medico y colores por estado libre/ocupado/continuacion/seleccion.
+- Se mejora la lectura operativa de la agenda semanal para administrativos de salud.
+
 ## 1.7.0 - Sesion y base local
 
 - Se reemplaza el flujo visible de importacion por carga explicita desde la base local H2.

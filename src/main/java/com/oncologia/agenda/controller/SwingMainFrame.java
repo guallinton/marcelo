@@ -103,14 +103,18 @@ public class SwingMainFrame extends JFrame {
     private final PatientTableModel patientModel = new PatientTableModel();
     private final AppointmentTableModel appointmentModel = new AppointmentTableModel();
     private final CalendarTableModel calendarModel = new CalendarTableModel();
+    private final DoctorSidebarModel doctorSidebarModel = new DoctorSidebarModel();
     private final JTable patientTable = new JTable(patientModel);
     private final JTable appointmentTable = new JTable(appointmentModel);
     private final JTable calendarTable = new JTable(calendarModel);
+    private final JTable doctorTable = new JTable(doctorSidebarModel);
     private final JTextArea detailArea = new JTextArea();
     private final JLabel status = new JLabel("Listo");
     private final JSpinner dateSpinner = new JSpinner(new SpinnerDateModel(new Date(), null, null, Calendar.DAY_OF_MONTH));
     private final JComboBox<String> viewMode = new JComboBox<String>(new String[]{"Semanal", "Diaria"});
     private final JComboBox<User> doctorFilter = new JComboBox<User>();
+    private final JTextField doctorSearchField = new JTextField();
+    private List<User> sidebarDoctors = new ArrayList<User>();
     private boolean darkMode;
 
     public SwingMainFrame(User currentUser) {
@@ -199,7 +203,10 @@ public class SwingMainFrame extends JFrame {
         viewMode.setToolTipText("Vista semanal o diaria");
         viewMode.addActionListener(e -> refreshAgenda());
         doctorFilter.setToolTipText("Filtrar turnos por medico");
-        doctorFilter.addActionListener(e -> refreshAgenda());
+        doctorFilter.addActionListener(e -> {
+            refreshAgenda();
+            selectDoctorInSidebar((User) doctorFilter.getSelectedItem());
+        });
 
         JButton config = new JButton("Horarios");
         styleToolbarButton(config);
@@ -260,11 +267,48 @@ public class SwingMainFrame extends JFrame {
         JSplitPane centerRight = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, buildCalendarPanel(), buildRightPanel());
         centerRight.setResizeWeight(0.73);
         centerRight.setContinuousLayout(true);
-        JSplitPane all = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, buildPatientPanel(), centerRight);
-        all.setResizeWeight(0.24);
+        JSplitPane leftSidebar = new JSplitPane(JSplitPane.VERTICAL_SPLIT, buildDoctorPanel(), buildPatientPanel());
+        leftSidebar.setResizeWeight(0.34);
+        leftSidebar.setContinuousLayout(true);
+        JSplitPane all = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftSidebar, centerRight);
+        all.setResizeWeight(0.30);
         all.setContinuousLayout(true);
         all.setBorder(new EmptyBorder(12, 12, 12, 12));
         return all;
+    }
+
+    private Component buildDoctorPanel() {
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        decoratePanel(panel, "Medicos");
+        doctorSearchField.setToolTipText("Buscar medico por nombre o rol");
+        doctorSearchField.putClientProperty("JTextField.placeholderText", "Buscar medico");
+        doctorSearchField.getDocument().addDocumentListener(new SimpleDocumentListener() {
+            @Override
+            public void update() {
+                refreshDoctorSidebar();
+            }
+        });
+
+        doctorTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        doctorTable.setTableHeader(null);
+        doctorTable.setRowHeight(64);
+        doctorTable.setShowGrid(false);
+        doctorTable.setDefaultRenderer(Object.class, new DoctorSidebarRenderer());
+        doctorTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                User doctor = selectedSidebarDoctor();
+                if (doctor != null) {
+                    selectDoctorFilter(doctor);
+                }
+            }
+        });
+
+        JLabel hint = new JLabel("Seleccione para filtrar agenda");
+        hint.setForeground(MUTED);
+        panel.add(doctorSearchField, BorderLayout.NORTH);
+        panel.add(new JScrollPane(doctorTable), BorderLayout.CENTER);
+        panel.add(hint, BorderLayout.SOUTH);
+        return panel;
     }
 
     private Component buildPatientPanel() {
@@ -360,6 +404,7 @@ public class SwingMainFrame extends JFrame {
     }
 
     private void configureTables() {
+        doctorTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         patientTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         applyTableStyle(patientTable);
         patientTable.getSelectionModel().addListSelectionListener(e -> showPatientDetail(selectedPatient()));
@@ -424,11 +469,60 @@ public class SwingMainFrame extends JFrame {
 
     private void refreshDoctors() {
         DefaultComboBoxModel<User> model = new DefaultComboBoxModel<User>();
-        model.addElement(new User(0, "todos", "", "Todos", Role.MEDICO));
-        for (User doctor : scheduleService.findDoctors()) {
+        User all = new User(0, "todos", "", "Todos los medicos", Role.MEDICO);
+        model.addElement(all);
+        sidebarDoctors = new ArrayList<User>();
+        sidebarDoctors.add(all);
+        List<User> doctors = scheduleService.findDoctors();
+        sidebarDoctors.addAll(doctors);
+        for (User doctor : doctors) {
             model.addElement(doctor);
         }
         doctorFilter.setModel(model);
+        refreshDoctorSidebar();
+    }
+
+    private void refreshDoctorSidebar() {
+        String query = doctorSearchField.getText() == null ? "" : doctorSearchField.getText().trim().toLowerCase(Locale.ROOT);
+        List<User> filtered = new ArrayList<User>();
+        for (User doctor : sidebarDoctors) {
+            if (query.isEmpty()
+                    || doctor.getFullName().toLowerCase(Locale.ROOT).contains(query)
+                    || doctor.getRole().getLabel().toLowerCase(Locale.ROOT).contains(query)) {
+                filtered.add(doctor);
+            }
+        }
+        doctorSidebarModel.setDoctors(filtered);
+        selectDoctorInSidebar((User) doctorFilter.getSelectedItem());
+    }
+
+    private User selectedSidebarDoctor() {
+        int row = doctorTable.getSelectedRow();
+        return row >= 0 ? doctorSidebarModel.getDoctor(doctorTable.convertRowIndexToModel(row)) : null;
+    }
+
+    private void selectDoctorFilter(User doctor) {
+        for (int i = 0; i < doctorFilter.getItemCount(); i++) {
+            User item = doctorFilter.getItemAt(i);
+            if (item.getId() == doctor.getId()) {
+                doctorFilter.setSelectedIndex(i);
+                refreshAgenda();
+                status.setText(doctor.getId() == 0 ? "Vista consolidada de todos los medicos." : "Agenda filtrada por " + doctor.getFullName() + ".");
+                return;
+            }
+        }
+    }
+
+    private void selectDoctorInSidebar(User doctor) {
+        if (doctor == null || doctorSidebarModel.getRowCount() == 0) {
+            return;
+        }
+        for (int i = 0; i < doctorSidebarModel.getRowCount(); i++) {
+            if (doctorSidebarModel.getDoctor(i).getId() == doctor.getId()) {
+                doctorTable.getSelectionModel().setSelectionInterval(i, i);
+                return;
+            }
+        }
     }
 
     private void refreshPatients() {
@@ -823,6 +917,95 @@ public class SwingMainFrame extends JFrame {
         }
     }
 
+    private static class DoctorSidebarModel extends AbstractTableModel {
+        private List<User> doctors = new ArrayList<User>();
+
+        public void setDoctors(List<User> doctors) {
+            this.doctors = doctors;
+            fireTableDataChanged();
+        }
+
+        public User getDoctor(int row) {
+            return doctors.get(row);
+        }
+
+        @Override
+        public int getRowCount() {
+            return doctors.size();
+        }
+
+        @Override
+        public int getColumnCount() {
+            return 1;
+        }
+
+        @Override
+        public Object getValueAt(int rowIndex, int columnIndex) {
+            return doctors.get(rowIndex);
+        }
+    }
+
+    private static class DoctorSidebarRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            User doctor = value instanceof User ? (User) value : null;
+            if (doctor == null) {
+                setText("");
+                return component;
+            }
+            Color color = doctorColor(doctor);
+            String initials = doctor.getId() == 0 ? "*" : initials(doctor.getFullName());
+            String line2 = doctor.getId() == 0 ? "Vista consolidada" : "Medico · Agenda activa";
+            String active = doctor.getId() == 0 ? "Todos" : "Activo";
+            setText("<html><div style='padding:6px 4px;'>"
+                    + "<span style='color:" + hex(color) + ";font-size:16px;'>●</span> "
+                    + "<b>" + escape(initials) + " · " + escape(doctor.getFullName()) + "</b><br>"
+                    + "<span style='color:#5B6778;'>" + escape(line2) + " · " + escape(active) + "</span>"
+                    + "</div></html>");
+            setBorder(new EmptyBorder(6, 8, 6, 8));
+            if (isSelected) {
+                component.setBackground(new Color(190, 242, 255));
+            } else {
+                component.setBackground(row % 2 == 0 ? Color.WHITE : new Color(246, 252, 255));
+            }
+            component.setForeground(new Color(31, 41, 55));
+            return component;
+        }
+    }
+
+    private static Color doctorColor(User doctor) {
+        if (doctor == null || doctor.getId() == 0) {
+            return PRIMARY;
+        }
+        Color[] palette = {
+                new Color(14, 181, 225),
+                new Color(126, 116, 220),
+                new Color(255, 97, 122),
+                new Color(32, 178, 132),
+                new Color(245, 158, 11)
+        };
+        return palette[(int) (Math.abs(doctor.getId()) % palette.length)];
+    }
+
+    private static String initials(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            return "?";
+        }
+        String[] parts = name.trim().split("\\s+");
+        String first = parts[0].substring(0, 1);
+        String second = parts.length > 1 ? parts[1].substring(0, 1) : "";
+        return (first + second).toUpperCase(Locale.ROOT);
+    }
+
+    private static String hex(Color color) {
+        return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
+    }
+
+    private static String escape(String value) {
+        return value == null ? "" : value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
     private static class AppointmentTableModel extends AbstractTableModel {
         private final String[] columns = {"Fecha", "Hora", "Paciente", "Medico", "Cama"};
         private List<Appointment> appointments = new ArrayList<Appointment>();
@@ -983,7 +1166,7 @@ public class SwingMainFrame extends JFrame {
         @Override
         public String toString() {
             if (isFree()) {
-                return "Libre";
+                return "";
             }
             if (start) {
                 return appointment.getPatient().getFullName()
@@ -1003,16 +1186,21 @@ public class SwingMainFrame extends JFrame {
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             setHorizontalAlignment(column == 0 ? SwingConstants.CENTER : SwingConstants.LEFT);
-            String text = value == null ? "" : value.toString();
-            setText("<html>" + text.replace("\n", "<br>") + "</html>");
             setBorder(new EmptyBorder(6, 8, 6, 8));
             if (column == 0) {
+                String text = value == null ? "" : value.toString();
+                setText("<html><b>" + escape(text) + "</b></html>");
                 component.setBackground(new Color(248, 251, 255));
                 component.setForeground(MUTED);
                 return component;
             }
             CalendarSlot slot = value instanceof CalendarSlot ? (CalendarSlot) value : CalendarSlot.free();
             component.setForeground(new Color(31, 41, 55));
+            if (slot.isFree()) {
+                setText("");
+            } else {
+                setText(calendarCardHtml(slot));
+            }
             if (isSelected) {
                 component.setBackground(slot.isFree() ? SELECTED_FREE : SELECTED_BUSY);
             } else if (slot.isFree()) {
@@ -1023,6 +1211,22 @@ public class SwingMainFrame extends JFrame {
                 component.setBackground(BUSY_CONTINUATION);
             }
             return component;
+        }
+
+        private String calendarCardHtml(CalendarSlot slot) {
+            Appointment appointment = slot.getAppointment();
+            String color = hex(doctorColor(appointment.getDoctor()));
+            if (!slot.isStart()) {
+                return "<html><div style='border-left:4px solid " + color + ";padding-left:6px;'>"
+                        + "<span style='color:#6b7280;'>↳ Ocupado hasta " + escape(TIME.format(appointment.getEnd())) + "</span><br>"
+                        + "<b>" + escape(appointment.getPatient().getFullName()) + "</b>"
+                        + "</div></html>";
+            }
+            return "<html><div style='border-left:4px solid " + color + ";padding-left:6px;'>"
+                    + "<b>👤 " + escape(appointment.getPatient().getFullName()) + "</b><br>"
+                    + "<span>🕐 " + escape(TIME.format(appointment.getStart())) + " - " + escape(TIME.format(appointment.getEnd())) + "</span><br>"
+                    + "<span>⏱ " + appointment.getDurationMinutes() + " min · " + escape(appointment.getDoctor().getFullName()) + "</span>"
+                    + "</div></html>";
         }
     }
 
