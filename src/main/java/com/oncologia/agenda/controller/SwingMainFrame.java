@@ -2,6 +2,7 @@ package com.oncologia.agenda.controller;
 
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
+import com.oncologia.agenda.AppInfo;
 import com.oncologia.agenda.model.Appointment;
 import com.oncologia.agenda.model.ChemoProtocol;
 import com.oncologia.agenda.model.Patient;
@@ -13,6 +14,7 @@ import com.oncologia.agenda.service.ReportService;
 import com.oncologia.agenda.service.ScheduleService;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -35,12 +37,16 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.MatteBorder;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
@@ -55,14 +61,16 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 public class SwingMainFrame extends JFrame {
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
+    private static final Color SURFACE = new Color(245, 248, 252);
+    private static final Color CARD_BORDER = new Color(218, 226, 238);
+    private static final Color PRIMARY = new Color(31, 111, 235);
+    private static final Color MUTED = new Color(88, 103, 124);
 
     private final User currentUser;
     private final PatientService patientService = new PatientService();
@@ -84,13 +92,15 @@ public class SwingMainFrame extends JFrame {
     private boolean darkMode;
 
     public SwingMainFrame(User currentUser) {
-        super("Agenda Oncologica - " + currentUser.getFullName() + " (" + currentUser.getRole().getLabel() + ")");
+        super(AppInfo.displayName() + " - " + currentUser.getFullName());
         this.currentUser = currentUser;
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(1220, 760));
         setLayout(new BorderLayout());
-        add(buildToolbar(), BorderLayout.NORTH);
+        getContentPane().setBackground(SURFACE);
+        add(buildTopPanel(), BorderLayout.NORTH);
         add(buildContent(), BorderLayout.CENTER);
+        status.setBorder(new EmptyBorder(6, 12, 6, 12));
         add(status, BorderLayout.SOUTH);
         configureTables();
         refreshDoctors();
@@ -100,16 +110,61 @@ public class SwingMainFrame extends JFrame {
         setLocationRelativeTo(null);
     }
 
+    private JPanel buildTopPanel() {
+        JPanel top = new JPanel(new BorderLayout());
+        top.setBackground(SURFACE);
+        top.add(buildHeaderPanel(), BorderLayout.NORTH);
+        top.add(buildToolbar(), BorderLayout.SOUTH);
+        return top;
+    }
+
+    private JPanel buildHeaderPanel() {
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBorder(new EmptyBorder(16, 18, 12, 18));
+        header.setBackground(SURFACE);
+
+        JLabel title = new JLabel(AppInfo.displayName());
+        title.setFont(title.getFont().deriveFont(Font.BOLD, 24f));
+        JLabel subtitle = new JLabel("Gestion simple de pacientes, camas y turnos de quimioterapia");
+        subtitle.setForeground(MUTED);
+
+        JPanel titleBox = new JPanel(new BorderLayout(0, 4));
+        titleBox.setOpaque(false);
+        titleBox.add(title, BorderLayout.NORTH);
+        titleBox.add(subtitle, BorderLayout.SOUTH);
+
+        JPanel session = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        session.setOpaque(false);
+        JLabel role = new JLabel(currentUser.getRole().getLabel());
+        role.setOpaque(true);
+        role.setForeground(Color.WHITE);
+        role.setBackground(currentUser.getRole() == Role.ENFERMERIA ? PRIMARY : new Color(85, 112, 133));
+        role.setBorder(new EmptyBorder(6, 12, 6, 12));
+        JLabel user = new JLabel(currentUser.getFullName());
+        user.setForeground(MUTED);
+        session.add(user);
+        session.add(role);
+
+        header.add(titleBox, BorderLayout.WEST);
+        header.add(session, BorderLayout.EAST);
+        return header;
+    }
+
     private JToolBar buildToolbar() {
         JToolBar toolbar = new JToolBar();
         toolbar.setFloatable(false);
+        toolbar.setBorder(new MatteBorder(1, 0, 1, 0, CARD_BORDER));
+        toolbar.setBackground(Color.WHITE);
         JButton previous = new JButton("<");
+        styleToolbarButton(previous);
         previous.setToolTipText("Ir al dia o semana anterior");
         previous.addActionListener(e -> moveDate(-1));
         JButton next = new JButton(">");
+        styleToolbarButton(next);
         next.setToolTipText("Ir al dia o semana siguiente");
         next.addActionListener(e -> moveDate(1));
         JButton today = new JButton("Hoy");
+        styleToolbarButton(today);
         today.setToolTipText("Volver a la fecha actual");
         today.addActionListener(e -> {
             dateSpinner.setValue(new Date());
@@ -125,18 +180,26 @@ public class SwingMainFrame extends JFrame {
         doctorFilter.addActionListener(e -> refreshAgenda());
 
         JButton config = new JButton("Horarios");
+        styleToolbarButton(config);
         config.setToolTipText("Configurar horario laboral, bloques y camas/butacas");
         config.setEnabled(currentUser.getRole() == Role.ENFERMERIA);
         config.addActionListener(e -> openConfigDialog());
         JButton pdf = new JButton("PDF semanal");
+        styleToolbarButton(pdf);
         pdf.setToolTipText("Exportar agenda semanal a PDF");
         pdf.addActionListener(e -> exportWeeklyPdf());
         JButton reports = new JButton("Reportes");
+        styleToolbarButton(reports);
         reports.setToolTipText("Exportar pendientes y ocupacion a PDF");
         reports.addActionListener(e -> exportOperationalReport());
         JButton theme = new JButton("Tema");
+        styleToolbarButton(theme);
         theme.setToolTipText("Alternar modo claro/oscuro");
         theme.addActionListener(e -> toggleTheme());
+        JButton about = new JButton("Acerca");
+        styleToolbarButton(about);
+        about.setToolTipText("Ver version y datos de la aplicacion");
+        about.addActionListener(e -> showAbout());
 
         toolbar.add(previous);
         toolbar.add(next);
@@ -150,23 +213,28 @@ public class SwingMainFrame extends JFrame {
         toolbar.add(pdf);
         toolbar.add(reports);
         toolbar.add(theme);
+        toolbar.add(about);
         toolbar.addSeparator();
-        toolbar.add(new JLabel(currentUser.getFullName() + " - " + currentUser.getRole().getLabel()));
+        toolbar.add(Box.createHorizontalGlue());
         return toolbar;
     }
 
     private Component buildContent() {
         JSplitPane centerRight = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, buildCalendarPanel(), buildRightPanel());
         centerRight.setResizeWeight(0.73);
+        centerRight.setContinuousLayout(true);
         JSplitPane all = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, buildPatientPanel(), centerRight);
         all.setResizeWeight(0.24);
+        all.setContinuousLayout(true);
+        all.setBorder(new EmptyBorder(12, 12, 12, 12));
         return all;
     }
 
     private Component buildPatientPanel() {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
-        panel.setBorder(BorderFactory.createTitledBorder("Pacientes"));
+        decoratePanel(panel, "Pacientes");
         searchField.setToolTipText("Buscar por DNI, nombre o apellido");
+        searchField.putClientProperty("JTextField.placeholderText", "Buscar paciente por DNI o nombre");
         searchField.getDocument().addDocumentListener(new SimpleDocumentListener() {
             @Override
             public void update() {
@@ -177,6 +245,9 @@ public class SwingMainFrame extends JFrame {
         JButton add = new JButton("Nuevo");
         JButton edit = new JButton("Editar");
         JButton delete = new JButton("Eliminar");
+        stylePrimaryButton(add);
+        styleSecondaryButton(edit);
+        styleSecondaryButton(delete);
         add.setEnabled(currentUser.getRole() == Role.ENFERMERIA);
         edit.setEnabled(currentUser.getRole() == Role.ENFERMERIA);
         delete.setEnabled(currentUser.getRole() == Role.ENFERMERIA);
@@ -199,17 +270,18 @@ public class SwingMainFrame extends JFrame {
 
     private Component buildCalendarPanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Agenda"));
+        decoratePanel(panel, "Agenda");
         panel.add(new JScrollPane(calendarTable), BorderLayout.CENTER);
         return panel;
     }
 
     private Component buildRightPanel() {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
-        panel.setBorder(BorderFactory.createTitledBorder("Detalles y turnos"));
+        decoratePanel(panel, "Detalles y turnos");
         detailArea.setEditable(false);
         detailArea.setLineWrap(true);
         detailArea.setWrapStyleWord(true);
+        detailArea.setBorder(new EmptyBorder(8, 8, 8, 8));
         JPanel top = new JPanel(new BorderLayout());
         top.add(new JScrollPane(detailArea), BorderLayout.CENTER);
         top.setPreferredSize(new Dimension(360, 210));
@@ -217,6 +289,9 @@ public class SwingMainFrame extends JFrame {
         JButton create = new JButton("Crear turno");
         JButton reschedule = new JButton("Reprogramar");
         JButton delete = new JButton("Eliminar");
+        stylePrimaryButton(create);
+        styleSecondaryButton(reschedule);
+        styleSecondaryButton(delete);
         delete.setEnabled(currentUser.getRole() == Role.ENFERMERIA);
         create.addActionListener(e -> openAppointmentDialog(null, selectedCalendarStart(), selectedCalendarBed()));
         reschedule.addActionListener(e -> {
@@ -237,10 +312,13 @@ public class SwingMainFrame extends JFrame {
 
     private void configureTables() {
         patientTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        applyTableStyle(patientTable);
         patientTable.getSelectionModel().addListSelectionListener(e -> showPatientDetail(selectedPatient()));
         appointmentTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        applyTableStyle(appointmentTable);
         appointmentTable.getSelectionModel().addListSelectionListener(e -> showAppointmentDetail(selectedAppointment()));
         calendarTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        applyTableStyle(calendarTable);
         calendarTable.setCellSelectionEnabled(true);
         calendarTable.setRowHeight(72);
         calendarTable.setDefaultRenderer(Object.class, new CalendarRenderer());
@@ -257,6 +335,41 @@ public class SwingMainFrame extends JFrame {
                 }
             }
         });
+    }
+
+    private void decoratePanel(JPanel panel, String title) {
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(CARD_BORDER),
+                BorderFactory.createCompoundBorder(
+                        BorderFactory.createTitledBorder(title),
+                        new EmptyBorder(8, 8, 8, 8)
+                )
+        ));
+    }
+
+    private void applyTableStyle(JTable table) {
+        table.setShowGrid(false);
+        table.setIntercellSpacing(new Dimension(0, 0));
+        table.setFillsViewportHeight(true);
+        table.getTableHeader().setReorderingAllowed(false);
+        table.getTableHeader().setFont(table.getTableHeader().getFont().deriveFont(Font.BOLD));
+    }
+
+    private void styleToolbarButton(JButton button) {
+        button.putClientProperty("JButton.buttonType", "roundRect");
+        button.setFocusable(false);
+    }
+
+    private void stylePrimaryButton(JButton button) {
+        button.putClientProperty("JButton.buttonType", "roundRect");
+        button.setFont(button.getFont().deriveFont(Font.BOLD));
+        button.setBackground(PRIMARY);
+        button.setForeground(Color.WHITE);
+    }
+
+    private void styleSecondaryButton(JButton button) {
+        button.putClientProperty("JButton.buttonType", "roundRect");
     }
 
     private void refreshDoctors() {
@@ -293,7 +406,8 @@ public class SwingMainFrame extends JFrame {
         }
         calendarModel.setData(from, isWeekly(), scheduleService.getConfig(), appointments);
         appointmentModel.setAppointments(appointments);
-        status.setText("Agenda actualizada: " + DATE.format(from) + " - " + DATE.format(to));
+        status.setText("Agenda actualizada: " + DATE.format(from) + " - " + DATE.format(to)
+                + " | " + appointments.size() + " turno(s)");
     }
 
     private void moveDate(int direction) {
@@ -498,9 +612,23 @@ public class SwingMainFrame extends JFrame {
             darkMode = !darkMode;
             UIManager.setLookAndFeel(darkMode ? new FlatDarkLaf() : new FlatLightLaf());
             SwingUtilities.updateComponentTreeUI(this);
+            status.setText("Tema " + (darkMode ? "oscuro" : "claro") + " aplicado.");
         } catch (Exception ex) {
             showError("No se pudo cambiar el tema.");
         }
+    }
+
+    private void showAbout() {
+        JOptionPane.showMessageDialog(
+                this,
+                AppInfo.displayName()
+                        + "\nRelease: " + AppInfo.RELEASE_NAME
+                        + "\nJava compatible: 8 o superior"
+                        + "\nBase de datos: H2 embebida"
+                        + "\nInterfaz: Swing + FlatLaf",
+                "Acerca de " + AppInfo.NAME,
+                JOptionPane.INFORMATION_MESSAGE
+        );
     }
 
     private void showError(String message) {
