@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.0 - Protocolos internacionales y casco
+
+- Alta de medicos desde el formulario de paciente (`+ Nuevo medico`).
+- Protocolos con referencia NCCN/ESMO/ASCO, tiempo de infusion y ocupacion probable de butaca.
+- Checkbox de casco de enfriamiento de cuero cabelludo (scalp cooling).
+- Duracion sugerida de turnos segun protocolo del paciente; alertas si usa casco.
+
 ## 1.8.0 - Agenda clinica visual
 
 - Se agrega sidebar visual de medicos con busqueda, iniciales, color identificador y filtro directo de agenda.

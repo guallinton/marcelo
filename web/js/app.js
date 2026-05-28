@@ -229,6 +229,13 @@
       row("CI", patient ? patient.ci : "—") +
       row("Prestador", patient ? patient.provider || "—" : "—") +
       row("Protocolo", protocol ? protocol.label : "—") +
+      (protocol
+        ? row(
+            "Ocupacion estimada",
+            "Infusion " + protocol.infusionMinutes + " min · Butaca " + protocol.duration + " min"
+          )
+        : "") +
+      (patient && patient.scalpCooling ? row("Casco enfriamiento", "Si — scalp cooling") : "") +
       row("Medico", doctor ? doctor.fullName : "—") +
       row("Horario", formatTime(start) + " – " + formatTime(end) + " (" + appt.durationMinutes + " min)") +
       row("Cama / Butaca", String(appt.bedChair)) +

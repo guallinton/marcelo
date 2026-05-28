@@ -47,6 +47,7 @@ public final class Database {
                         + ")");
                 statement.execute("ALTER TABLE patients ADD COLUMN IF NOT EXISTS doctor_id BIGINT");
                 statement.execute("ALTER TABLE patients ADD COLUMN IF NOT EXISTS photo BLOB");
+                statement.execute("ALTER TABLE patients ADD COLUMN IF NOT EXISTS scalp_cooling BOOLEAN DEFAULT FALSE");
                 statement.execute("CREATE TABLE IF NOT EXISTS appointments ("
                         + "id IDENTITY PRIMARY KEY,"
                         + "patient_id BIGINT NOT NULL,"

@@ -39,6 +39,39 @@ public class UserDao {
         }
     }
 
+    public Optional<User> findByUsername(String username) {
+        String sql = "SELECT * FROM users WHERE username = ?";
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, username);
+            try (ResultSet rs = statement.executeQuery()) {
+                return rs.next() ? Optional.of(map(rs)) : Optional.empty();
+            }
+        } catch (SQLException e) {
+            throw new DataAccessException("Error al buscar usuario", e);
+        }
+    }
+
+    public User insert(User user) {
+        String sql = "INSERT INTO users (username, password, full_name, role) VALUES (?, ?, ?, ?)";
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
+            statement.setString(1, user.getUsername());
+            statement.setString(2, user.getPassword());
+            statement.setString(3, user.getFullName());
+            statement.setString(4, user.getRole().name());
+            statement.executeUpdate();
+            try (ResultSet keys = statement.getGeneratedKeys()) {
+                if (keys.next()) {
+                    user.setId(keys.getLong(1));
+                }
+            }
+            return user;
+        } catch (SQLException e) {
+            throw new DataAccessException("No se pudo crear el usuario. Verifique que el nombre de acceso sea unico.", e);
+        }
+    }
+
     public List<User> findDoctors() {
         String sql = "SELECT * FROM users WHERE role = 'MEDICO' ORDER BY full_name";
         try (Connection connection = Database.getConnection();

@@ -83,8 +83,8 @@ public class PatientDao {
 
     private Patient insert(Patient patient) {
         String sql = "INSERT INTO patients "
-                + "(first_name, last_name, dni, insurance, doctor_id, diagnosis, protocol, allergies, emergency_contact, photo, neutropenic, fever) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                + "(first_name, last_name, dni, insurance, doctor_id, diagnosis, protocol, allergies, emergency_contact, photo, neutropenic, fever, scalp_cooling) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             fill(statement, patient);
@@ -103,12 +103,12 @@ public class PatientDao {
     private void update(Patient patient) {
         String sql = "UPDATE patients "
                 + "SET first_name = ?, last_name = ?, dni = ?, insurance = ?, doctor_id = ?, diagnosis = ?, protocol = ?, "
-                + "allergies = ?, emergency_contact = ?, photo = ?, neutropenic = ?, fever = ? "
+                + "allergies = ?, emergency_contact = ?, photo = ?, neutropenic = ?, fever = ?, scalp_cooling = ? "
                 + "WHERE id = ?";
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             fill(statement, patient);
-            statement.setLong(13, patient.getId());
+            statement.setLong(14, patient.getId());
             statement.executeUpdate();
         } catch (SQLException e) {
             throw new DataAccessException("No se pudo actualizar paciente. CI duplicada o datos invalidos.", e);
@@ -132,6 +132,7 @@ public class PatientDao {
         statement.setBytes(10, patient.getPhoto());
         statement.setBoolean(11, patient.isNeutropenic());
         statement.setBoolean(12, patient.isFever());
+        statement.setBoolean(13, patient.isScalpCooling());
     }
 
     private Patient map(ResultSet rs) throws SQLException {
@@ -158,6 +159,11 @@ public class PatientDao {
         patient.setPhoto(rs.getBytes("photo"));
         patient.setNeutropenic(rs.getBoolean("neutropenic"));
         patient.setFever(rs.getBoolean("fever"));
+        try {
+            patient.setScalpCooling(rs.getBoolean("scalp_cooling"));
+        } catch (SQLException ignored) {
+            patient.setScalpCooling(false);
+        }
         return patient;
     }
 

@@ -14,6 +14,7 @@ public class Patient {
     private byte[] photo;
     private boolean neutropenic;
     private boolean fever;
+    private boolean scalpCooling;
 
     public long getId() {
         return id;
@@ -135,21 +136,41 @@ public class Patient {
         this.fever = fever;
     }
 
+    public boolean isScalpCooling() {
+        return scalpCooling;
+    }
+
+    public void setScalpCooling(boolean scalpCooling) {
+        this.scalpCooling = scalpCooling;
+    }
+
     public String getFullName() {
         return (nullToEmpty(firstName) + " " + nullToEmpty(lastName)).trim();
     }
 
     public String getRiskText() {
+        StringBuilder text = new StringBuilder();
         if (neutropenic && fever) {
-            return "Neutropenico y con fiebre";
+            text.append("Neutropenico y con fiebre");
+        } else if (neutropenic) {
+            text.append("Neutropenico");
+        } else if (fever) {
+            text.append("Con fiebre");
         }
-        if (neutropenic) {
-            return "Neutropenico";
+        if (scalpCooling) {
+            if (text.length() > 0) {
+                text.append(" · ");
+            }
+            text.append("Casco enfriamiento cuero cabelludo");
         }
-        if (fever) {
-            return "Con fiebre";
+        return text.length() == 0 ? "Sin alertas" : text.toString();
+    }
+
+    public String getProtocolOccupancyText() {
+        if (protocol == null) {
+            return "";
         }
-        return "Sin alertas";
+        return protocol.getOccupancySummary();
     }
 
     private String nullToEmpty(String value) {

@@ -10,6 +10,7 @@ import com.oncologia.agenda.model.Role;
 import com.oncologia.agenda.model.ScheduleConfig;
 import com.oncologia.agenda.model.User;
 import com.oncologia.agenda.service.AuthService;
+import com.oncologia.agenda.service.DoctorService;
 import com.oncologia.agenda.service.PatientExcelService;
 import com.oncologia.agenda.service.PatientService;
 import com.oncologia.agenda.service.ReportService;
@@ -97,6 +98,7 @@ public class SwingMainFrame extends JFrame {
     private final PatientService patientService = new PatientService();
     private final PatientExcelService patientExcelService = new PatientExcelService(patientService);
     private final ScheduleService scheduleService = new ScheduleService();
+    private final DoctorService doctorService = new DoctorService();
     private final ReportService reportService = new ReportService();
 
     private final JTextField searchField = new JTextField();
@@ -629,18 +631,20 @@ public class SwingMainFrame extends JFrame {
                 + "\nLimpieza hasta: " + TIME.format(appointment.getEndWithCleaning())
                 + "\nMedico: " + appointment.getDoctor().getFullName()
                 + "\nProtocolo: " + appointment.getPatient().getProtocol().getLabel()
+                + "\n" + appointment.getPatient().getProtocolOccupancyText()
                 + "\nCama/Butaca: " + appointment.getBedChair()
                 + "\nAlerta clinica: " + appointment.getPatient().getRiskText());
     }
 
     private void editPatient(Patient existing) {
-        Patient result = PatientDialog.showDialog(this, existing, scheduleService.findDoctors());
+        Patient result = PatientDialog.showDialog(this, existing, scheduleService, doctorService);
         if (result == null) {
             return;
         }
         try {
             patientService.save(result);
             refreshPatients();
+            refreshDoctors();
             status.setText("Paciente guardado en base local H2.");
         } catch (RuntimeException ex) {
             showError(ex.getMessage());
@@ -908,7 +912,7 @@ public class SwingMainFrame extends JFrame {
                 case 3:
                     return patient.getDoctor() == null ? "-" : patient.getDoctor().getFullName();
                 case 4:
-                    return patient.getProtocol().getLabel();
+                    return patient.getProtocol().getLabel() + " (~" + patient.getProtocol().getChairOccupancyMinutes() + " min)";
                 case 5:
                     return patient.getRiskText();
                 default:
@@ -1247,21 +1251,62 @@ public class SwingMainFrame extends JFrame {
     }
 
     private static class PatientDialog {
-        static Patient showDialog(JFrame parent, Patient existing, List<User> doctors) {
+        static Patient showDialog(JFrame parent, Patient existing, ScheduleService scheduleService, DoctorService doctorService) {
+            List<User> doctors = new ArrayList<User>(scheduleService.findDoctors());
             JTextField firstName = new JTextField(existing == null ? "" : existing.getFirstName(), 24);
             JTextField lastName = new JTextField(existing == null ? "" : existing.getLastName(), 24);
             JTextField ci = new JTextField(existing == null ? "" : existing.getCi(), 24);
             ci.setToolTipText("CI uruguaya con digito verificador. Ejemplo: 1.234.567-2");
             JTextField provider = new JTextField(existing == null ? "" : empty(existing.getProvider()), 24);
-            JComboBox<User> doctor = new JComboBox<User>(doctorOptions(doctors));
+            DefaultComboBoxModel<User> doctorModel = new DefaultComboBoxModel<User>(doctorOptions(doctors));
+            JComboBox<User> doctor = new JComboBox<User>(doctorModel);
             doctor.setSelectedItem(existing == null ? nullDoctor() : findUser(doctors, existing.getDoctor()));
+            JButton newDoctorBtn = new JButton("+ Nuevo medico");
+            newDoctorBtn.addActionListener(e -> {
+                User created = NewDoctorDialog.showDialog(parent, doctorService);
+                if (created != null) {
+                    doctors.add(created);
+                    doctorModel.addElement(created);
+                    doctor.setSelectedItem(created);
+                }
+            });
+            JPanel doctorRow = new JPanel(new BorderLayout(8, 0));
+            doctorRow.add(doctor, BorderLayout.CENTER);
+            doctorRow.add(newDoctorBtn, BorderLayout.EAST);
             JTextArea diagnosis = new JTextArea(existing == null ? "" : empty(existing.getDiagnosis()), 3, 24);
             JComboBox<ChemoProtocol> protocol = new JComboBox<ChemoProtocol>(ChemoProtocol.values());
             protocol.setSelectedItem(existing == null ? ChemoProtocol.OTRO : existing.getProtocol());
+            JLabel protocolGuideline = new JLabel();
+            protocolGuideline.setForeground(MUTED);
+            protocolGuideline.setFont(protocolGuideline.getFont().deriveFont(Font.PLAIN, 11f));
+            JLabel protocolOccupancy = new JLabel();
+            protocolOccupancy.setForeground(new Color(11, 111, 138));
+            protocolOccupancy.setFont(protocolOccupancy.getFont().deriveFont(Font.BOLD, 11f));
+            Runnable updateProtocolInfo = () -> {
+                ChemoProtocol selected = (ChemoProtocol) protocol.getSelectedItem();
+                if (selected == null) {
+                    protocolGuideline.setText("");
+                    protocolOccupancy.setText("");
+                    return;
+                }
+                protocolGuideline.setText("<html><b>Pauta:</b> " + escape(selected.getGuidelineReference()) + "</html>");
+                protocolOccupancy.setText(selected.getOccupancySummary());
+            };
+            protocol.addActionListener(e -> updateProtocolInfo.run());
+            updateProtocolInfo.run();
+            JPanel protocolPanel = new JPanel(new GridLayout(3, 1, 0, 4));
+            protocolPanel.add(protocol);
+            protocolPanel.add(protocolGuideline);
+            protocolPanel.add(protocolOccupancy);
             JTextArea allergies = new JTextArea(existing == null ? "" : empty(existing.getAllergies()), 3, 24);
             JTextField emergency = new JTextField(existing == null ? "" : empty(existing.getEmergencyContact()), 24);
             JCheckBox neutropenic = new JCheckBox("Neutropenico", existing != null && existing.isNeutropenic());
             JCheckBox fever = new JCheckBox("Fiebre", existing != null && existing.isFever());
+            JCheckBox scalpCooling = new JCheckBox(
+                    "Uso de casco de enfriamiento de cuero cabelludo",
+                    existing != null && existing.isScalpCooling()
+            );
+            scalpCooling.setToolTipText("Prevencion de alopecia por quimioterapia (scalp cooling / cold cap)");
             final byte[][] photo = new byte[][]{existing == null ? null : existing.getPhoto()};
             JLabel photoPreview = new JLabel(createPhotoIcon(photo[0]));
             photoPreview.setHorizontalAlignment(SwingConstants.CENTER);
@@ -1288,15 +1333,16 @@ public class SwingMainFrame extends JFrame {
             addRow(form, 1, "Apellido", lastName);
             addRow(form, 2, "CI unica", ci);
             addRow(form, 3, "Prestador", provider);
-            addRow(form, 4, "Medico", doctor);
+            addRow(form, 4, "Medico", doctorRow);
             addRow(form, 5, "Diagnostico", new JScrollPane(diagnosis));
-            addRow(form, 6, "Protocolo", protocol);
+            addRow(form, 6, "Protocolo", protocolPanel);
             addRow(form, 7, "Alergias", new JScrollPane(allergies));
             addRow(form, 8, "Contacto emergencia", emergency);
-            addRow(form, 9, "Alertas", new JPanel(new GridLayout(1, 2)) {{
-                add(neutropenic);
-                add(fever);
-            }});
+            JPanel alertsPanel = new JPanel(new GridLayout(0, 1, 0, 4));
+            alertsPanel.add(neutropenic);
+            alertsPanel.add(fever);
+            alertsPanel.add(scalpCooling);
+            addRow(form, 9, "Alertas", alertsPanel);
 
             JPanel photoPanel = new JPanel(new BorderLayout(8, 8));
             photoPanel.setBorder(new EmptyBorder(16, 16, 16, 16));
@@ -1334,6 +1380,7 @@ public class SwingMainFrame extends JFrame {
             patient.setPhoto(photo[0]);
             patient.setNeutropenic(neutropenic.isSelected());
             patient.setFever(fever.isSelected());
+            patient.setScalpCooling(scalpCooling.isSelected());
             return patient;
         }
 
@@ -1387,6 +1434,39 @@ public class SwingMainFrame extends JFrame {
         }
     }
 
+    private static class NewDoctorDialog {
+        static User showDialog(JFrame parent, DoctorService doctorService) {
+            JTextField username = new JTextField(16);
+            username.setToolTipText("Nombre de acceso, ej: drgarcia");
+            JTextField fullName = new JTextField(24);
+            JPasswordField password = new JPasswordField("1234", 16);
+            JPanel form = formPanel();
+            addRow(form, 0, "Usuario acceso", username);
+            addRow(form, 1, "Nombre completo", fullName);
+            addRow(form, 2, "Contrasena inicial", password);
+            int option = JOptionPane.showConfirmDialog(
+                    parent,
+                    form,
+                    "Nuevo medico",
+                    JOptionPane.OK_CANCEL_OPTION,
+                    JOptionPane.PLAIN_MESSAGE
+            );
+            if (option != JOptionPane.OK_OPTION) {
+                return null;
+            }
+            try {
+                return doctorService.createDoctor(
+                        username.getText(),
+                        fullName.getText(),
+                        new String(password.getPassword())
+                );
+            } catch (RuntimeException ex) {
+                JOptionPane.showMessageDialog(parent, ex.getMessage(), "No se pudo crear medico", JOptionPane.ERROR_MESSAGE);
+                return null;
+            }
+        }
+    }
+
     private static class AppointmentDialog {
         static Appointment showDialog(JFrame parent, Appointment existing, Patient selectedPatient, LocalDateTime defaultStart, int defaultBed,
                                       List<Patient> patients, List<User> doctors, ScheduleConfig config, User currentUser) {
@@ -1409,9 +1489,23 @@ public class SwingMainFrame extends JFrame {
                 if (automatic.isSelected()) {
                     duration.setValue(defaultDuration(selected));
                 }
-                warning.setText(selected != null && (selected.isFever() || selected.isNeutropenic())
-                        ? "Advertencia roja: sugerir reprogramar o validar con el equipo."
-                        : "");
+                StringBuilder alert = new StringBuilder();
+                if (selected != null && (selected.isFever() || selected.isNeutropenic())) {
+                    alert.append("Advertencia roja: sugerir reprogramar o validar con el equipo.");
+                }
+                if (selected != null && selected.isScalpCooling()) {
+                    if (alert.length() > 0) {
+                        alert.append(" ");
+                    }
+                    alert.append("Casco de enfriamiento: reservar tiempo de instalacion (+15-30 min) y butaca con espacio.");
+                }
+                if (selected != null && selected.getProtocol() != null && automatic.isSelected()) {
+                    if (alert.length() > 0) {
+                        alert.append(" ");
+                    }
+                    alert.append("Duracion sugerida: ").append(selected.getProtocol().getChairOccupancyMinutes()).append(" min.");
+                }
+                warning.setText(alert.toString());
             });
             patient.getActionListeners()[0].actionPerformed(null);
             JPanel form = formPanel();

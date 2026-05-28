@@ -26,7 +26,8 @@ window.AgendaStorage = (function () {
           protocolId: "FOLFOX",
           allergies: "Ninguna",
           neutropenic: false,
-          fever: false
+          fever: false,
+          scalpCooling: false
         },
         {
           id: 2,
@@ -39,7 +40,8 @@ window.AgendaStorage = (function () {
           protocolId: "RITUXIMAB",
           allergies: "Penicilina",
           neutropenic: true,
-          fever: false
+          fever: false,
+          scalpCooling: true
         },
         {
           id: 3,
@@ -52,7 +54,8 @@ window.AgendaStorage = (function () {
           protocolId: "AC_T",
           allergies: "",
           neutropenic: false,
-          fever: false
+          fever: false,
+          scalpCooling: false
         },
         {
           id: 4,

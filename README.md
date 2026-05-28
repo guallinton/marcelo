@@ -2,7 +2,17 @@
 
 Aplicacion de escritorio Swing/FlatLaf para gestionar pacientes oncologicos y agenda de quimioterapia.
 
-Version actual: **1.8.0 - Agenda clinica visual**.
+Version actual: **1.9.0 - Protocolos internacionales y casco**.
+
+## Version web (HTML / CSS / JavaScript)
+
+Carpeta [`web/`](web/): agenda responsive centrada en la visualizacion semanal y diaria, con persistencia en `localStorage`. No requiere Java ni Maven.
+
+```bash
+cd web && python3 -m http.server 8080
+```
+
+Abra `http://localhost:8080` o directamente `web/index.html`. Detalles en [`web/README.md`](web/README.md).
 
 ## Requisitos
 
@@ -13,7 +23,7 @@ Version actual: **1.8.0 - Agenda clinica visual**.
 
 ```bash
 ./mvnw -DskipTests package dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target/dependency
-java -cp "target/agenda-quimioterapia-1.8.0.jar:target/dependency/*" com.oncologia.agenda.AppLauncher
+java -cp "target/agenda-quimioterapia-1.9.0.jar:target/dependency/*" com.oncologia.agenda.AppLauncher
 ```
 
 Usuarios precargados:
