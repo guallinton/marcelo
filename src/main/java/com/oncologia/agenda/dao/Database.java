@@ -8,7 +8,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public final class Database {
-    private static final String DB_URL = "jdbc:h2:./data/agenda_oncologia_java8;AUTO_SERVER=TRUE;DATABASE_TO_UPPER=false";
+    private static final String DB_URL = "jdbc:h2:./data/agenda_oncologia_java17;AUTO_SERVER=TRUE;DATABASE_TO_UPPER=false";
     private static final String USER = "sa";
     private static final String PASSWORD = "";
 

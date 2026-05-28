@@ -623,7 +623,7 @@ public class SwingMainFrame extends JFrame {
                 this,
                 AppInfo.displayName()
                         + "\nRelease: " + AppInfo.RELEASE_NAME
-                        + "\nJava compatible: 8 o superior"
+                        + "\nJava compatible: 17 o superior"
                         + "\nBase de datos: H2 embebida"
                         + "\nInterfaz: Swing + FlatLaf",
                 "Acerca de " + AppInfo.NAME,

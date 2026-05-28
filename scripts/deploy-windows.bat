@@ -4,7 +4,7 @@ setlocal
 set "TARGET=C:\Users\metas.asistenciales\Desktop\cursor"
 set "APPDIR=%TARGET%\agenda-quimioterapia"
 set "DIST=target\agenda-quimioterapia-dist"
-set "JAR=agenda-quimioterapia-1.1.0.jar"
+set "JAR=agenda-quimioterapia-1.2.0.jar"
 set "MVN_CMD=mvn"
 
 if exist "mvnw.cmd" (
@@ -14,7 +14,7 @@ if exist "mvnw.cmd" (
 echo Compilando aplicacion...
 call %MVN_CMD% -q -DskipTests package dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=%DIST%\lib
 if errorlevel 1 (
-    echo Error al compilar. Verifique Java 8+ en PATH.
+    echo Error al compilar. Verifique Java 17+ en PATH.
     exit /b 1
 )
 

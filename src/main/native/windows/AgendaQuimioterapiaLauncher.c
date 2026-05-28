@@ -41,7 +41,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previousInstance, PWSTR comman
     _snwprintf(
             javaCommand,
             4096,
-            L"javaw.exe -cp \"agenda-quimioterapia-1.1.0.jar;lib\\*\" com.oncologia.agenda.AppLauncher"
+            L"javaw.exe -cp \"agenda-quimioterapia-1.2.0.jar;lib\\*\" com.oncologia.agenda.AppLauncher"
     );
     javaCommand[4095] = L'\0';
 
@@ -67,7 +67,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previousInstance, PWSTR comman
     if (!started) {
         MessageBoxW(
                 NULL,
-                L"No se pudo iniciar Java. Instale Java 8 o superior y vuelva a abrir AgendaQuimioterapia.exe.",
+                L"No se pudo iniciar Java. Instale Java 17 o superior y vuelva a abrir AgendaQuimioterapia.exe.",
                 L"Agenda Quimioterapia",
                 MB_ICONERROR
         );

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0 - Java 17
+
+- Se actualiza la compilacion y ejecucion requerida a Java 17.
+- Se actualiza H2 a la linea 2.x para runtime moderno.
+- Se usa una base embebida separada `agenda_oncologia_java17` para evitar abrir archivos H2 antiguos incompatibles.
+- Se regeneran los paquetes portables para Windows con `agenda-quimioterapia-1.2.0.jar`.
+
 ## 1.1.0 - UX sencilla
 
 - Se agrega version visible en login, ventana principal y dialogo "Acerca".

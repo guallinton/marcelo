@@ -2,18 +2,18 @@
 
 Aplicacion de escritorio Swing/FlatLaf para gestionar pacientes oncologicos y agenda de quimioterapia.
 
-Version actual: **1.1.0 - UX sencilla**.
+Version actual: **1.2.0 - Java 17**.
 
 ## Requisitos
 
-- Java 8 o superior
+- Java 17 o superior
 - Maven no es obligatorio para desplegar en Windows: el proyecto incluye Maven Wrapper (`mvnw.cmd`).
 
 ## Ejecutar en desarrollo
 
 ```bash
 ./mvnw -DskipTests package dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target/dependency
-java -cp "target/agenda-quimioterapia-1.1.0.jar:target/dependency/*" com.oncologia.agenda.AppLauncher
+java -cp "target/agenda-quimioterapia-1.2.0.jar:target/dependency/*" com.oncologia.agenda.AppLauncher
 ```
 
 Usuarios precargados:
@@ -31,7 +31,7 @@ En Windows, desde la raiz del proyecto, ejecutar:
 scripts\deploy-windows.bat
 ```
 
-El script usa `mvnw.cmd` automaticamente si esta disponible, por lo que solo necesita Java 8+ instalado.
+El script usa `mvnw.cmd` automaticamente si esta disponible, por lo que solo necesita Java 17+ instalado.
 
 El script compila la aplicacion y la copia en:
 
