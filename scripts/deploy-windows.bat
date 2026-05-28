@@ -4,7 +4,7 @@ setlocal
 set "TARGET=C:\Users\metas.asistenciales\Desktop\cursor"
 set "APPDIR=%TARGET%\agenda-quimioterapia"
 set "DIST=target\agenda-quimioterapia-dist"
-set "JAR=agenda-quimioterapia-1.2.0.jar"
+set "JAR=agenda-quimioterapia-1.3.0.jar"
 set "MVN_CMD=mvn"
 
 if exist "mvnw.cmd" (

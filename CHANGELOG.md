@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.0 - Multiplataforma
+
+- Se agregan lanzadores para macOS/Linux (`run-agenda.sh`) junto al `.exe` y `.bat` de Windows.
+- Se agrega script de despliegue Unix (`scripts/deploy-unix.sh`) para copiar la app a `~/Desktop/cursor/agenda-quimioterapia`.
+- Se regeneran los paquetes portables con `agenda-quimioterapia-1.3.0.jar`.
+- Se mantiene Java 17 como requisito de ejecucion.
+
 ## 1.2.0 - Java 17
 
 - Se actualiza la compilacion y ejecucion requerida a Java 17.

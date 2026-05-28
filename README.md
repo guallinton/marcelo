@@ -2,7 +2,7 @@
 
 Aplicacion de escritorio Swing/FlatLaf para gestionar pacientes oncologicos y agenda de quimioterapia.
 
-Version actual: **1.2.0 - Java 17**.
+Version actual: **1.3.0 - Multiplataforma**.
 
 ## Requisitos
 
@@ -13,7 +13,7 @@ Version actual: **1.2.0 - Java 17**.
 
 ```bash
 ./mvnw -DskipTests package dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target/dependency
-java -cp "target/agenda-quimioterapia-1.2.0.jar:target/dependency/*" com.oncologia.agenda.AppLauncher
+java -cp "target/agenda-quimioterapia-1.3.0.jar:target/dependency/*" com.oncologia.agenda.AppLauncher
 ```
 
 Usuarios precargados:
@@ -47,6 +47,33 @@ C:\Users\metas.asistenciales\Desktop\cursor\agenda-quimioterapia\AgendaQuimioter
 
 Tambien se incluye `run-agenda.bat` como alternativa.
 
+## Ejecucion en macOS y Linux
+
+El ZIP portable tambien incluye un lanzador para macOS/Linux:
+
+```bash
+./run-agenda.sh
+```
+
+Si el sistema no permite ejecutarlo, dar permisos una sola vez:
+
+```bash
+chmod +x run-agenda.sh
+./run-agenda.sh
+```
+
+Para desplegar desde el codigo fuente en macOS/Linux:
+
+```bash
+scripts/deploy-unix.sh
+```
+
+Por defecto copia la aplicacion a `~/Desktop/cursor/agenda-quimioterapia`. Tambien se puede pasar una carpeta destino:
+
+```bash
+scripts/deploy-unix.sh "$HOME/Aplicaciones"
+```
+
 ## Funcionalidades principales
 
 - Login simple con roles.
@@ -56,6 +83,7 @@ Tambien se incluye `run-agenda.bat` como alternativa.
 - Reprogramacion segun permisos: enfermeria todos, medico solo propios.
 - PDF de agenda semanal y reporte operativo con pendientes y ocupacion.
 - Modo claro/oscuro, tooltips, cabecera con version y acciones simples.
+- Paquete portable para Windows, macOS y Linux.
 
 ## Versionado
 
