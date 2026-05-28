@@ -18,6 +18,12 @@ public class PatientService {
         return patientDao.save(patient);
     }
 
+    public Patient saveOrUpdateByCi(Patient patient) {
+        validate(patient);
+        patientDao.findByCi(patient.getCi()).ifPresent(existing -> patient.setId(existing.getId()));
+        return patientDao.save(patient);
+    }
+
     public void delete(Patient patient) {
         patientDao.delete(patient.getId());
     }

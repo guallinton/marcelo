@@ -9,6 +9,7 @@ import com.oncologia.agenda.model.Patient;
 import com.oncologia.agenda.model.Role;
 import com.oncologia.agenda.model.ScheduleConfig;
 import com.oncologia.agenda.model.User;
+import com.oncologia.agenda.service.PatientExcelService;
 import com.oncologia.agenda.service.PatientService;
 import com.oncologia.agenda.service.ReportService;
 import com.oncologia.agenda.service.ScheduleService;
@@ -91,6 +92,7 @@ public class SwingMainFrame extends JFrame {
 
     private final User currentUser;
     private final PatientService patientService = new PatientService();
+    private final PatientExcelService patientExcelService = new PatientExcelService(patientService);
     private final ScheduleService scheduleService = new ScheduleService();
     private final ReportService reportService = new ReportService();
 
@@ -258,16 +260,23 @@ public class SwingMainFrame extends JFrame {
                 refreshPatients();
             }
         });
-        JPanel buttons = new JPanel(new GridLayout(1, 3, 6, 6));
+        JPanel buttons = new JPanel(new GridLayout(2, 3, 6, 6));
         JButton add = new JButton("Nuevo");
         JButton edit = new JButton("Editar");
         JButton delete = new JButton("Eliminar");
+        JButton exportExcel = new JButton("Exportar Excel");
+        JButton importExcel = new JButton("Importar Excel");
+        JButton refresh = new JButton("Actualizar");
         stylePrimaryButton(add);
         styleSecondaryButton(edit);
         styleSecondaryButton(delete);
+        styleSecondaryButton(exportExcel);
+        styleSecondaryButton(importExcel);
+        styleSecondaryButton(refresh);
         add.setEnabled(currentUser.getRole() == Role.ENFERMERIA);
         edit.setEnabled(currentUser.getRole() == Role.ENFERMERIA);
         delete.setEnabled(currentUser.getRole() == Role.ENFERMERIA);
+        importExcel.setEnabled(currentUser.getRole() == Role.ENFERMERIA);
         add.addActionListener(e -> editPatient(null));
         edit.addActionListener(e -> {
             Patient selected = selectedPatient();
@@ -276,9 +285,15 @@ public class SwingMainFrame extends JFrame {
             }
         });
         delete.addActionListener(e -> deletePatient());
+        exportExcel.addActionListener(e -> exportPatientsExcel());
+        importExcel.addActionListener(e -> importPatientsExcel());
+        refresh.addActionListener(e -> refreshPatients());
         buttons.add(add);
         buttons.add(edit);
         buttons.add(delete);
+        buttons.add(exportExcel);
+        buttons.add(importExcel);
+        buttons.add(refresh);
         panel.add(searchField, BorderLayout.NORTH);
         panel.add(new JScrollPane(patientTable), BorderLayout.CENTER);
         panel.add(buttons, BorderLayout.SOUTH);
@@ -509,7 +524,7 @@ public class SwingMainFrame extends JFrame {
         try {
             patientService.save(result);
             refreshPatients();
-            status.setText("Paciente guardado.");
+            status.setText("Paciente guardado en base local H2.");
         } catch (RuntimeException ex) {
             showError(ex.getMessage());
         }
@@ -530,6 +545,46 @@ public class SwingMainFrame extends JFrame {
         } catch (RuntimeException ex) {
             showError(ex.getMessage());
         }
+    }
+
+    private void exportPatientsExcel() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Exportar pacientes a Excel");
+        chooser.setFileFilter(new FileNameExtensionFilter("Excel XLSX", "xlsx"));
+        chooser.setSelectedFile(new File("pacientes-agenda-quimioterapia.xlsx"));
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        File file = ensureXlsx(chooser.getSelectedFile());
+        try {
+            patientExcelService.exportPatients(file.toPath(), patientService.search(searchField.getText()));
+            status.setText("Pacientes exportados a Excel: " + file.getAbsolutePath());
+        } catch (RuntimeException ex) {
+            showError(ex.getMessage());
+        }
+    }
+
+    private void importPatientsExcel() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Importar pacientes desde Excel");
+        chooser.setFileFilter(new FileNameExtensionFilter("Excel XLSX", "xlsx"));
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        try {
+            int count = patientExcelService.importPatients(chooser.getSelectedFile().toPath(), scheduleService.findDoctors());
+            refreshPatients();
+            status.setText("Pacientes importados/actualizados desde Excel: " + count);
+        } catch (RuntimeException ex) {
+            showError(ex.getMessage());
+        }
+    }
+
+    private File ensureXlsx(File file) {
+        if (file.getName().toLowerCase(Locale.ROOT).endsWith(".xlsx")) {
+            return file;
+        }
+        return new File(file.getParentFile(), file.getName() + ".xlsx");
     }
 
     private void openAppointmentDialog(Appointment existing, LocalDateTime start, int bed) {

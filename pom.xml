@@ -6,7 +6,7 @@
 
     <groupId>com.oncologia</groupId>
     <artifactId>agenda-quimioterapia</artifactId>
-    <version>1.5.0</version>
+    <version>1.6.0</version>
     <name>Agenda Quimioterapia</name>
     <description>Aplicación de escritorio para gestión de agendas oncológicas</description>
 
@@ -14,6 +14,7 @@
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <pdfbox.version>3.0.5</pdfbox.version>
+        <poi.version>5.4.1</poi.version>
         <h2.version>2.3.232</h2.version>
         <flatlaf.version>3.6</flatlaf.version>
     </properties>
@@ -33,6 +34,11 @@
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf</artifactId>
             <version>${flatlaf.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>${poi.version}</version>
         </dependency>
     </dependencies>
 

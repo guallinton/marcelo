@@ -50,6 +50,19 @@ public class PatientDao {
         }
     }
 
+    public Optional<Patient> findByCi(String ci) {
+        String sql = selectSql() + "WHERE p.dni = ?";
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, ci);
+            try (ResultSet rs = statement.executeQuery()) {
+                return rs.next() ? Optional.of(map(rs)) : Optional.empty();
+            }
+        } catch (SQLException e) {
+            throw new DataAccessException("Error al obtener paciente por CI", e);
+        }
+    }
+
     public Patient save(Patient patient) {
         if (patient.getId() == 0) {
             return insert(patient);

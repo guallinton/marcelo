@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.0 - Persistencia Excel
+
+- Se refuerza el guardado de pacientes en la base local H2 y se muestra estado explicito al guardar.
+- Se agrega exportacion de pacientes a Excel `.xlsx`.
+- Se agrega importacion de pacientes desde Excel `.xlsx`, actualizando por CI si ya existe.
+- Se documenta que la base local se crea en la carpeta `data/` del directorio de ejecucion.
+
 ## 1.5.0 - Agenda visual
 
 - La grilla de agenda marca como ocupado cada bloque horario cubierto por la duracion del turno.
