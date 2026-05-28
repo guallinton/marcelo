@@ -41,7 +41,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previousInstance, PWSTR comman
     _snwprintf(
             javaCommand,
             4096,
-            L"javaw.exe -cp \"agenda-quimioterapia-1.6.0.jar;lib\\*\" com.oncologia.agenda.AppLauncher"
+            L"javaw.exe -cp \"agenda-quimioterapia-1.7.0.jar;lib\\*\" com.oncologia.agenda.AppLauncher"
     );
     javaCommand[4095] = L'\0';
 

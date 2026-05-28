@@ -9,6 +9,7 @@ import com.oncologia.agenda.model.Patient;
 import com.oncologia.agenda.model.Role;
 import com.oncologia.agenda.model.ScheduleConfig;
 import com.oncologia.agenda.model.User;
+import com.oncologia.agenda.service.AuthService;
 import com.oncologia.agenda.service.PatientExcelService;
 import com.oncologia.agenda.service.PatientService;
 import com.oncologia.agenda.service.ReportService;
@@ -26,6 +27,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPasswordField;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JSplitPane;
@@ -91,6 +93,7 @@ public class SwingMainFrame extends JFrame {
     private static final Color SELECTED_BUSY = new Color(255, 177, 187);
 
     private final User currentUser;
+    private final AuthService authService = new AuthService();
     private final PatientService patientService = new PatientService();
     private final PatientExcelService patientExcelService = new PatientExcelService(patientService);
     private final ScheduleService scheduleService = new ScheduleService();
@@ -219,6 +222,18 @@ public class SwingMainFrame extends JFrame {
         styleToolbarButton(about);
         about.setToolTipText("Ver version y datos de la aplicacion");
         about.addActionListener(e -> showAbout());
+        JButton password = new JButton("Cambiar contrasena");
+        styleToolbarButton(password);
+        password.setToolTipText("Cambiar contrasena del usuario actual");
+        password.addActionListener(e -> changePassword());
+        JButton switchRole = new JButton("Cambiar rol");
+        styleToolbarButton(switchRole);
+        switchRole.setToolTipText("Cerrar sesion y entrar con otro rol");
+        switchRole.addActionListener(e -> logout());
+        JButton logout = new JButton("Cerrar sesion");
+        styleToolbarButton(logout);
+        logout.setToolTipText("Salir de la sesion actual");
+        logout.addActionListener(e -> logout());
 
         toolbar.add(previous);
         toolbar.add(next);
@@ -233,6 +248,9 @@ public class SwingMainFrame extends JFrame {
         toolbar.add(reports);
         toolbar.add(theme);
         toolbar.add(about);
+        toolbar.add(password);
+        toolbar.add(switchRole);
+        toolbar.add(logout);
         toolbar.addSeparator();
         toolbar.add(Box.createHorizontalGlue());
         return toolbar;
@@ -265,18 +283,18 @@ public class SwingMainFrame extends JFrame {
         JButton edit = new JButton("Editar");
         JButton delete = new JButton("Eliminar");
         JButton exportExcel = new JButton("Exportar Excel");
-        JButton importExcel = new JButton("Importar Excel");
-        JButton refresh = new JButton("Actualizar");
+        JButton refresh = new JButton("Cargar base");
+        JButton hint = new JButton("Base local");
         stylePrimaryButton(add);
         styleSecondaryButton(edit);
         styleSecondaryButton(delete);
         styleSecondaryButton(exportExcel);
-        styleSecondaryButton(importExcel);
         styleSecondaryButton(refresh);
+        styleSecondaryButton(hint);
         add.setEnabled(currentUser.getRole() == Role.ENFERMERIA);
         edit.setEnabled(currentUser.getRole() == Role.ENFERMERIA);
         delete.setEnabled(currentUser.getRole() == Role.ENFERMERIA);
-        importExcel.setEnabled(currentUser.getRole() == Role.ENFERMERIA);
+        hint.setEnabled(false);
         add.addActionListener(e -> editPatient(null));
         edit.addActionListener(e -> {
             Patient selected = selectedPatient();
@@ -286,14 +304,13 @@ public class SwingMainFrame extends JFrame {
         });
         delete.addActionListener(e -> deletePatient());
         exportExcel.addActionListener(e -> exportPatientsExcel());
-        importExcel.addActionListener(e -> importPatientsExcel());
-        refresh.addActionListener(e -> refreshPatients());
+        refresh.addActionListener(e -> loadPatientsFromDatabase());
         buttons.add(add);
         buttons.add(edit);
         buttons.add(delete);
         buttons.add(exportExcel);
-        buttons.add(importExcel);
         buttons.add(refresh);
+        buttons.add(hint);
         panel.add(searchField, BorderLayout.NORTH);
         panel.add(new JScrollPane(patientTable), BorderLayout.CENTER);
         panel.add(buttons, BorderLayout.SOUTH);
@@ -420,6 +437,12 @@ public class SwingMainFrame extends JFrame {
         if (selected != null) {
             selectPatientById(selected.getId());
         }
+    }
+
+    private void loadPatientsFromDatabase() {
+        searchField.setText("");
+        patientModel.setPatients(patientService.search(""));
+        status.setText("Pacientes cargados desde la base local H2.");
     }
 
     private void refreshAgenda() {
@@ -578,6 +601,43 @@ public class SwingMainFrame extends JFrame {
         } catch (RuntimeException ex) {
             showError(ex.getMessage());
         }
+    }
+
+    private void changePassword() {
+        JPanel form = formPanel();
+        JPasswordField current = new JPasswordField(20);
+        JPasswordField next = new JPasswordField(20);
+        JPasswordField confirm = new JPasswordField(20);
+        addRow(form, 0, "Contrasena actual", current);
+        addRow(form, 1, "Nueva contrasena", next);
+        addRow(form, 2, "Confirmar", confirm);
+        int option = JOptionPane.showConfirmDialog(
+                this,
+                form,
+                "Cambiar contrasena - " + currentUser.getUsername(),
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE
+        );
+        if (option != JOptionPane.OK_OPTION) {
+            return;
+        }
+        try {
+            authService.changePassword(
+                    currentUser,
+                    new String(current.getPassword()),
+                    new String(next.getPassword()),
+                    new String(confirm.getPassword())
+            );
+            status.setText("Contrasena actualizada para " + currentUser.getUsername() + ".");
+            JOptionPane.showMessageDialog(this, "Contrasena actualizada.", "Sesion", JOptionPane.INFORMATION_MESSAGE);
+        } catch (RuntimeException ex) {
+            showError(ex.getMessage());
+        }
+    }
+
+    private void logout() {
+        dispose();
+        new SwingLoginFrame().setVisible(true);
     }
 
     private File ensureXlsx(File file) {

@@ -15,6 +15,11 @@ public class PatientService {
 
     public Patient save(Patient patient) {
         validate(patient);
+        patientDao.findByCi(patient.getCi()).ifPresent(existing -> {
+            if (patient.getId() == 0 || existing.getId() != patient.getId()) {
+                throw new ValidationException("Ya existe un paciente con esa CI. Use editar sobre el registro existente.");
+            }
+        });
         return patientDao.save(patient);
     }
 

@@ -55,6 +55,9 @@ public class SwingLoginFrame extends JFrame {
         JLabel version = new JLabel("Version " + AppInfo.VERSION + " - " + AppInfo.RELEASE_NAME, SwingConstants.CENTER);
         version.setAlignmentX(CENTER_ALIGNMENT);
         version.setForeground(new Color(100, 116, 139));
+        JLabel roles = new JLabel("Roles: enfermera / 1234 (Enfermeria) | drlopez / 1234 (Medico)", SwingConstants.CENTER);
+        roles.setAlignmentX(CENTER_ALIGNMENT);
+        roles.setForeground(new Color(100, 116, 139));
 
         JPanel form = new JPanel(new GridBagLayout());
         form.setOpaque(false);
@@ -85,12 +88,30 @@ public class SwingLoginFrame extends JFrame {
         login.addActionListener(e -> doLogin());
         getRootPane().setDefaultButton(login);
         form.add(login, gbc);
+        gbc.gridy++;
+        JPanel roleButtons = new JPanel();
+        roleButtons.setOpaque(false);
+        JButton nurse = new JButton("Usar Enfermeria");
+        JButton doctor = new JButton("Usar Medico");
+        nurse.addActionListener(e -> {
+            username.setText("enfermera");
+            password.setText("1234");
+        });
+        doctor.addActionListener(e -> {
+            username.setText("drlopez");
+            password.setText("1234");
+        });
+        roleButtons.add(nurse);
+        roleButtons.add(doctor);
+        form.add(roleButtons, gbc);
 
         card.add(title);
         card.add(Box.createVerticalStrut(6));
         card.add(subtitle);
         card.add(Box.createVerticalStrut(2));
         card.add(version);
+        card.add(Box.createVerticalStrut(6));
+        card.add(roles);
         card.add(form);
         shell.add(card, BorderLayout.CENTER);
         add(shell, BorderLayout.CENTER);

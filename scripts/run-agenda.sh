@@ -9,4 +9,4 @@ if ! command -v java >/dev/null 2>&1; then
   exit 1
 fi
 
-exec java -cp "agenda-quimioterapia-1.6.0.jar:lib/*" com.oncologia.agenda.AppLauncher
+exec java -cp "agenda-quimioterapia-1.7.0.jar:lib/*" com.oncologia.agenda.AppLauncher

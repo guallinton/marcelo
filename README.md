@@ -2,7 +2,7 @@
 
 Aplicacion de escritorio Swing/FlatLaf para gestionar pacientes oncologicos y agenda de quimioterapia.
 
-Version actual: **1.6.0 - Persistencia Excel**.
+Version actual: **1.7.0 - Sesion y base local**.
 
 ## Requisitos
 
@@ -13,7 +13,7 @@ Version actual: **1.6.0 - Persistencia Excel**.
 
 ```bash
 ./mvnw -DskipTests package dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target/dependency
-java -cp "target/agenda-quimioterapia-1.6.0.jar:target/dependency/*" com.oncologia.agenda.AppLauncher
+java -cp "target/agenda-quimioterapia-1.7.0.jar:target/dependency/*" com.oncologia.agenda.AppLauncher
 ```
 
 Usuarios precargados:
@@ -90,7 +90,9 @@ scripts/deploy-unix.sh "$HOME/Aplicaciones"
 - Modo claro/oscuro, tooltips, cabecera con version y acciones simples.
 - Paquete portable para Windows, macOS y Linux.
 - Agenda con bloques ocupados por toda la duracion del turno y paleta turquesa/lila/coral.
-- Pacientes persistidos en base local H2 con exportacion/importacion Excel (`.xlsx`).
+- Pacientes persistidos en base local H2, carga explicita desde base y exportacion Excel (`.xlsx`).
+- Unicidad estricta: solo un paciente por CI.
+- Cierre de sesion/cambio de rol y cambio de contrasena desde la app.
 
 ## Versionado
 

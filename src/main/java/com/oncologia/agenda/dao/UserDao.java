@@ -54,6 +54,18 @@ public class UserDao {
         }
     }
 
+    public void updatePassword(long userId, String newPassword) {
+        String sql = "UPDATE users SET password = ? WHERE id = ?";
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, newPassword);
+            statement.setLong(2, userId);
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new DataAccessException("Error al cambiar contrasena", e);
+        }
+    }
+
     private User map(ResultSet rs) throws SQLException {
         return new User(
                 rs.getLong("id"),

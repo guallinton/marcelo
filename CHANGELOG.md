@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.0 - Sesion y base local
+
+- Se reemplaza el flujo visible de importacion por carga explicita desde la base local H2.
+- Se refuerza la unicidad: solo se permite un paciente por CI, con mensaje claro si ya existe.
+- Se agrega boton "Cargar base" en Pacientes.
+- Se agrega cierre de sesion y cambio de rol desde la barra principal.
+- Se agrega cambio de contrasena persistente en base local.
+- Se hace mas visible el rol Medico desde el login y desde la cabecera de sesion.
+
 ## 1.6.0 - Persistencia Excel
 
 - Se refuerza el guardado de pacientes en la base local H2 y se muestra estado explicito al guardar.
