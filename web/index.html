@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Agenda oncologica de quimioterapia - version web">
+  <title>Agenda Quimioterapia Web</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div id="login-screen" class="screen screen--login">
+    <div class="login-card">
+      <div class="brand-mark" aria-hidden="true">+</div>
+      <h1>Agenda Quimioterapia</h1>
+      <p class="login-subtitle">Version web centrada en agenda clinica</p>
+      <form id="login-form" class="login-form">
+        <label>
+          <span>Usuario</span>
+          <input type="text" id="login-username" autocomplete="username" value="enfermera" required>
+        </label>
+        <label>
+          <span>Contrasena</span>
+          <input type="password" id="login-password" autocomplete="current-password" value="1234" required>
+        </label>
+        <button type="submit" class="btn btn--primary btn--block">Ingresar</button>
+        <p id="login-error" class="form-error" role="alert" hidden></p>
+      </form>
+      <div class="login-hints">
+        <p><strong>Enfermeria:</strong> enfermera / 1234</p>
+        <p><strong>Medico:</strong> drlopez / 1234</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="app-screen" class="screen screen--app" hidden>
+    <header class="app-header">
+      <div class="app-header__brand">
+        <h1>Agenda Quimioterapia</h1>
+        <p id="header-subtitle">Gestion visual de turnos</p>
+      </div>
+      <div class="app-header__session">
+        <span id="session-user" class="session-user"></span>
+        <span id="session-role" class="badge"></span>
+        <button type="button" id="btn-logout" class="btn btn--ghost btn--sm">Salir</button>
+      </div>
+    </header>
+
+    <section class="toolbar" aria-label="Controles de agenda">
+      <div class="toolbar__nav">
+        <button type="button" id="btn-prev" class="btn btn--icon" title="Periodo anterior">&lsaquo;</button>
+        <button type="button" id="btn-today" class="btn btn--secondary btn--sm">Hoy</button>
+        <button type="button" id="btn-next" class="btn btn--icon" title="Periodo siguiente">&rsaquo;</button>
+        <input type="date" id="base-date" class="input-date" aria-label="Fecha base">
+      </div>
+      <div class="toolbar__views">
+        <button type="button" class="btn btn--tab is-active" data-view="week">Semanal</button>
+        <button type="button" class="btn btn--tab" data-view="day">Diaria</button>
+      </div>
+      <div class="toolbar__metrics" id="agenda-metrics" aria-live="polite"></div>
+      <button type="button" id="btn-new-appointment" class="btn btn--primary btn--sm">Nuevo turno</button>
+    </section>
+
+    <main class="app-layout">
+      <aside class="doctor-sidebar" aria-label="Medicos">
+        <div class="panel-head">
+          <h2>Medicos</h2>
+          <button type="button" id="btn-toggle-sidebar" class="btn btn--ghost btn--sm sidebar-mobile-toggle">Ocultar</button>
+        </div>
+        <input type="search" id="doctor-search" class="input-search" placeholder="Buscar medico..." aria-label="Buscar medico">
+        <div id="doctor-list" class="doctor-list"></div>
+        <div class="legend">
+          <h3>Leyenda</h3>
+          <ul>
+            <li><span class="legend-swatch legend-swatch--free"></span> Disponible</li>
+            <li><span class="legend-swatch legend-swatch--busy"></span> Ocupado</li>
+            <li><span class="legend-swatch legend-swatch--cont"></span> Continuacion</li>
+            <li><span class="legend-swatch legend-swatch--conflict"></span> Conflicto</li>
+          </ul>
+        </div>
+      </aside>
+
+      <section class="agenda-panel" aria-label="Agenda semanal">
+        <div class="agenda-panel__head">
+          <h2 id="agenda-title">Agenda</h2>
+          <p id="agenda-range" class="agenda-range"></p>
+        </div>
+        <div id="agenda-scroll" class="agenda-scroll">
+          <div id="agenda-root" class="agenda-root"></div>
+        </div>
+      </section>
+
+      <aside class="detail-panel" aria-label="Detalle">
+        <div class="panel-head">
+          <h2>Detalle</h2>
+        </div>
+        <div id="detail-content" class="detail-content">
+          <p class="detail-empty">Seleccione un turno en la agenda para ver el detalle.</p>
+        </div>
+        <div class="detail-actions">
+          <button type="button" id="btn-edit-appointment" class="btn btn--secondary btn--block" disabled>Editar turno</button>
+          <button type="button" id="btn-delete-appointment" class="btn btn--danger btn--block" disabled>Eliminar turno</button>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <dialog id="appointment-dialog" class="modal">
+    <form id="appointment-form" method="dialog" class="modal__body">
+      <header class="modal__header">
+        <h2 id="appointment-dialog-title">Nuevo turno</h2>
+        <button type="button" class="btn btn--icon modal-close" data-close>&times;</button>
+      </header>
+      <div class="modal__grid">
+        <label>
+          <span>Paciente</span>
+          <select id="appt-patient" required></select>
+        </label>
+        <label>
+          <span>Medico</span>
+          <select id="appt-doctor" required></select>
+        </label>
+        <label>
+          <span>Fecha</span>
+          <input type="date" id="appt-date" required>
+        </label>
+        <label>
+          <span>Hora</span>
+          <input type="time" id="appt-time" step="900" required>
+        </label>
+        <label>
+          <span>Duracion (min)</span>
+          <input type="number" id="appt-duration" min="15" step="15" value="60" required>
+        </label>
+        <label>
+          <span>Cama / Butaca</span>
+          <input type="number" id="appt-bed" min="1" max="4" value="1" required>
+        </label>
+      </div>
+      <p id="appt-warning" class="form-warning" hidden></p>
+      <footer class="modal__footer">
+        <button type="button" class="btn btn--ghost" data-close>Cancelar</button>
+        <button type="submit" class="btn btn--primary">Guardar turno</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <script src="js/config.js"></script>
+  <script src="js/ci-validator.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/agenda.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
