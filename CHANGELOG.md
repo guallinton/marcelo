@@ -4,6 +4,7 @@
 
 - Se agregan lanzadores para macOS/Linux (`run-agenda.sh`) junto al `.exe` y `.bat` de Windows.
 - Se agrega script de despliegue Unix (`scripts/deploy-unix.sh`) para copiar la app a `~/Desktop/cursor/agenda-quimioterapia`.
+- Se agrega ZIP alternativo sin `.exe` para macOS/Linux o redes que bloquean ejecutables.
 - Se regeneran los paquetes portables con `agenda-quimioterapia-1.3.0.jar`.
 - Se mantiene Java 17 como requisito de ejecucion.
 

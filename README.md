@@ -74,6 +74,11 @@ Por defecto copia la aplicacion a `~/Desktop/cursor/agenda-quimioterapia`. Tambi
 scripts/deploy-unix.sh "$HOME/Aplicaciones"
 ```
 
+## Paquetes portables
+
+- `agenda-quimioterapia-portable.zip`: paquete universal con `AgendaQuimioterapia.exe`, `run-agenda.bat` y `run-agenda.sh`.
+- `agenda-quimioterapia-multiplataforma-sin-exe.zip`: paquete universal sin `.exe`, util si la red o el antivirus bloquean ejecutables.
+
 ## Funcionalidades principales
 
 - Login simple con roles.
