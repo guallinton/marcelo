@@ -6,10 +6,12 @@ public class Patient {
     private String lastName;
     private String dni;
     private String insurance;
+    private User doctor;
     private String diagnosis;
     private ChemoProtocol protocol;
     private String allergies;
     private String emergencyContact;
+    private byte[] photo;
     private boolean neutropenic;
     private boolean fever;
 
@@ -45,12 +47,36 @@ public class Patient {
         this.dni = dni;
     }
 
+    public String getCi() {
+        return dni;
+    }
+
+    public void setCi(String ci) {
+        this.dni = ci;
+    }
+
     public String getInsurance() {
         return insurance;
     }
 
     public void setInsurance(String insurance) {
         this.insurance = insurance;
+    }
+
+    public String getProvider() {
+        return insurance;
+    }
+
+    public void setProvider(String provider) {
+        this.insurance = provider;
+    }
+
+    public User getDoctor() {
+        return doctor;
+    }
+
+    public void setDoctor(User doctor) {
+        this.doctor = doctor;
     }
 
     public String getDiagnosis() {
@@ -83,6 +109,14 @@ public class Patient {
 
     public void setEmergencyContact(String emergencyContact) {
         this.emergencyContact = emergencyContact;
+    }
+
+    public byte[] getPhoto() {
+        return photo;
+    }
+
+    public void setPhoto(byte[] photo) {
+        this.photo = photo;
     }
 
     public boolean isNeutropenic() {
@@ -124,6 +158,6 @@ public class Patient {
 
     @Override
     public String toString() {
-        return getFullName() + " - DNI " + dni;
+        return getFullName() + " - CI " + dni;
     }
 }

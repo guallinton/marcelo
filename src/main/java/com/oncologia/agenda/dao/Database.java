@@ -36,13 +36,17 @@ public final class Database {
                         + "last_name VARCHAR(100) NOT NULL,"
                         + "dni VARCHAR(30) NOT NULL UNIQUE,"
                         + "insurance VARCHAR(120),"
+                        + "doctor_id BIGINT,"
                         + "diagnosis VARCHAR(220),"
                         + "protocol VARCHAR(60) NOT NULL,"
                         + "allergies VARCHAR(300),"
                         + "emergency_contact VARCHAR(180),"
+                        + "photo BLOB,"
                         + "neutropenic BOOLEAN DEFAULT FALSE,"
                         + "fever BOOLEAN DEFAULT FALSE"
                         + ")");
+                statement.execute("ALTER TABLE patients ADD COLUMN IF NOT EXISTS doctor_id BIGINT");
+                statement.execute("ALTER TABLE patients ADD COLUMN IF NOT EXISTS photo BLOB");
                 statement.execute("CREATE TABLE IF NOT EXISTS appointments ("
                         + "id IDENTITY PRIMARY KEY,"
                         + "patient_id BIGINT NOT NULL,"

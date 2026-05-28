@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.0 - Ficha paciente CI
+
+- Se reemplaza DNI por CI en la interfaz y reportes.
+- Se agrega validacion de CI uruguaya con digito verificador.
+- Se cambia "Obra social" por "Prestador".
+- Se agrega medico asignado a la ficha del paciente.
+- Se agrega pestana de foto con imagen generica de persona y carga de JPG/PNG.
+- Se elimina el icono de pregunta del modal de paciente.
+
 ## 1.3.0 - Multiplataforma
 
 - Se agregan lanzadores para macOS/Linux (`run-agenda.sh`) junto al `.exe` y `.bat` de Windows.

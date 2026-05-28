@@ -21,6 +21,7 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -31,6 +32,7 @@ import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
+import javax.swing.JTabbedPane;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerDateModel;
 import javax.swing.SpinnerNumberModel;
@@ -39,8 +41,10 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -50,8 +54,12 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
+import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.Insets;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -63,6 +71,8 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 
 public class SwingMainFrame extends JFrame {
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -233,8 +243,8 @@ public class SwingMainFrame extends JFrame {
     private Component buildPatientPanel() {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         decoratePanel(panel, "Pacientes");
-        searchField.setToolTipText("Buscar por DNI, nombre o apellido");
-        searchField.putClientProperty("JTextField.placeholderText", "Buscar paciente por DNI o nombre");
+        searchField.setToolTipText("Buscar por CI, nombre o apellido");
+        searchField.putClientProperty("JTextField.placeholderText", "Buscar paciente por CI o nombre");
         searchField.getDocument().addDocumentListener(new SimpleDocumentListener() {
             @Override
             public void update() {
@@ -459,8 +469,9 @@ public class SwingMainFrame extends JFrame {
             return;
         }
         detailArea.setText("Paciente: " + patient.getFullName()
-                + "\nDNI: " + patient.getDni()
-                + "\nObra social: " + safe(patient.getInsurance())
+                + "\nCI: " + patient.getCi()
+                + "\nPrestador: " + safe(patient.getProvider())
+                + "\nMedico: " + (patient.getDoctor() == null ? "-" : patient.getDoctor().getFullName())
                 + "\nDiagnostico: " + safe(patient.getDiagnosis())
                 + "\nProtocolo: " + patient.getProtocol().getLabel()
                 + "\nAlergias: " + safe(patient.getAllergies())
@@ -483,7 +494,7 @@ public class SwingMainFrame extends JFrame {
     }
 
     private void editPatient(Patient existing) {
-        Patient result = PatientDialog.showDialog(this, existing);
+        Patient result = PatientDialog.showDialog(this, existing, scheduleService.findDoctors());
         if (result == null) {
             return;
         }
@@ -640,7 +651,7 @@ public class SwingMainFrame extends JFrame {
     }
 
     private static class PatientTableModel extends AbstractTableModel {
-        private final String[] columns = {"Paciente", "DNI", "Protocolo", "Alerta"};
+        private final String[] columns = {"Paciente", "CI", "Prestador", "Medico", "Protocolo", "Alerta"};
         private List<Patient> patients = new ArrayList<Patient>();
 
         public void setPatients(List<Patient> patients) {
@@ -674,10 +685,14 @@ public class SwingMainFrame extends JFrame {
                 case 0:
                     return patient.getFullName();
                 case 1:
-                    return patient.getDni();
+                    return patient.getCi();
                 case 2:
-                    return patient.getProtocol().getLabel();
+                    return patient.getProvider();
                 case 3:
+                    return patient.getDoctor() == null ? "-" : patient.getDoctor().getFullName();
+                case 4:
+                    return patient.getProtocol().getLabel();
+                case 5:
                     return patient.getRiskText();
                 default:
                     return "";
@@ -853,11 +868,14 @@ public class SwingMainFrame extends JFrame {
     }
 
     private static class PatientDialog {
-        static Patient showDialog(JFrame parent, Patient existing) {
+        static Patient showDialog(JFrame parent, Patient existing, List<User> doctors) {
             JTextField firstName = new JTextField(existing == null ? "" : existing.getFirstName(), 24);
             JTextField lastName = new JTextField(existing == null ? "" : existing.getLastName(), 24);
-            JTextField dni = new JTextField(existing == null ? "" : existing.getDni(), 24);
-            JTextField insurance = new JTextField(existing == null ? "" : empty(existing.getInsurance()), 24);
+            JTextField ci = new JTextField(existing == null ? "" : existing.getCi(), 24);
+            ci.setToolTipText("CI uruguaya con digito verificador. Ejemplo: 1.234.567-2");
+            JTextField provider = new JTextField(existing == null ? "" : empty(existing.getProvider()), 24);
+            JComboBox<User> doctor = new JComboBox<User>(doctorOptions(doctors));
+            doctor.setSelectedItem(existing == null ? nullDoctor() : findUser(doctors, existing.getDoctor()));
             JTextArea diagnosis = new JTextArea(existing == null ? "" : empty(existing.getDiagnosis()), 3, 24);
             JComboBox<ChemoProtocol> protocol = new JComboBox<ChemoProtocol>(ChemoProtocol.values());
             protocol.setSelectedItem(existing == null ? ChemoProtocol.OTRO : existing.getProtocol());
@@ -865,35 +883,128 @@ public class SwingMainFrame extends JFrame {
             JTextField emergency = new JTextField(existing == null ? "" : empty(existing.getEmergencyContact()), 24);
             JCheckBox neutropenic = new JCheckBox("Neutropenico", existing != null && existing.isNeutropenic());
             JCheckBox fever = new JCheckBox("Fiebre", existing != null && existing.isFever());
+            final byte[][] photo = new byte[][]{existing == null ? null : existing.getPhoto()};
+            JLabel photoPreview = new JLabel(createPhotoIcon(photo[0]));
+            photoPreview.setHorizontalAlignment(SwingConstants.CENTER);
+            JButton uploadPhoto = new JButton("Subir JPG/PNG");
+            uploadPhoto.addActionListener(e -> {
+                JFileChooser chooser = new JFileChooser();
+                chooser.setFileFilter(new FileNameExtensionFilter("Imagenes JPG/PNG", "jpg", "jpeg", "png"));
+                if (chooser.showOpenDialog(parent) == JFileChooser.APPROVE_OPTION) {
+                    try {
+                        photo[0] = Files.readAllBytes(chooser.getSelectedFile().toPath());
+                        photoPreview.setIcon(createPhotoIcon(photo[0]));
+                    } catch (IOException ex) {
+                        JOptionPane.showMessageDialog(parent, "No se pudo cargar la imagen.", "Atencion", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            });
+            JButton removePhoto = new JButton("Usar generica");
+            removePhoto.addActionListener(e -> {
+                photo[0] = null;
+                photoPreview.setIcon(createPhotoIcon(null));
+            });
             JPanel form = formPanel();
             addRow(form, 0, "Nombre", firstName);
             addRow(form, 1, "Apellido", lastName);
-            addRow(form, 2, "DNI unico", dni);
-            addRow(form, 3, "Obra social", insurance);
-            addRow(form, 4, "Diagnostico", new JScrollPane(diagnosis));
-            addRow(form, 5, "Protocolo", protocol);
-            addRow(form, 6, "Alergias", new JScrollPane(allergies));
-            addRow(form, 7, "Contacto emergencia", emergency);
-            addRow(form, 8, "Alertas", new JPanel(new GridLayout(1, 2)) {{
+            addRow(form, 2, "CI unica", ci);
+            addRow(form, 3, "Prestador", provider);
+            addRow(form, 4, "Medico", doctor);
+            addRow(form, 5, "Diagnostico", new JScrollPane(diagnosis));
+            addRow(form, 6, "Protocolo", protocol);
+            addRow(form, 7, "Alergias", new JScrollPane(allergies));
+            addRow(form, 8, "Contacto emergencia", emergency);
+            addRow(form, 9, "Alertas", new JPanel(new GridLayout(1, 2)) {{
                 add(neutropenic);
                 add(fever);
             }});
-            int option = JOptionPane.showConfirmDialog(parent, form, existing == null ? "Nuevo paciente" : "Editar paciente", JOptionPane.OK_CANCEL_OPTION);
+
+            JPanel photoPanel = new JPanel(new BorderLayout(8, 8));
+            photoPanel.setBorder(new EmptyBorder(16, 16, 16, 16));
+            photoPanel.add(photoPreview, BorderLayout.CENTER);
+            JPanel photoActions = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
+            photoActions.add(uploadPhoto);
+            photoActions.add(removePhoto);
+            photoPanel.add(photoActions, BorderLayout.SOUTH);
+
+            JTabbedPane tabs = new JTabbedPane();
+            tabs.addTab("Datos", form);
+            tabs.addTab("Foto", photoPanel);
+
+            int option = JOptionPane.showConfirmDialog(
+                    parent,
+                    tabs,
+                    existing == null ? "Nuevo paciente" : "Editar paciente",
+                    JOptionPane.OK_CANCEL_OPTION,
+                    JOptionPane.PLAIN_MESSAGE
+            );
             if (option != JOptionPane.OK_OPTION) {
                 return null;
             }
             Patient patient = existing == null ? new Patient() : existing;
             patient.setFirstName(firstName.getText().trim());
             patient.setLastName(lastName.getText().trim());
-            patient.setDni(dni.getText().trim());
-            patient.setInsurance(insurance.getText().trim());
+            patient.setCi(ci.getText().trim());
+            patient.setProvider(provider.getText().trim());
+            User selectedDoctor = (User) doctor.getSelectedItem();
+            patient.setDoctor(selectedDoctor == null || selectedDoctor.getId() == 0 ? null : selectedDoctor);
             patient.setDiagnosis(diagnosis.getText().trim());
             patient.setProtocol((ChemoProtocol) protocol.getSelectedItem());
             patient.setAllergies(allergies.getText().trim());
             patient.setEmergencyContact(emergency.getText().trim());
+            patient.setPhoto(photo[0]);
             patient.setNeutropenic(neutropenic.isSelected());
             patient.setFever(fever.isSelected());
             return patient;
+        }
+
+        private static User[] doctorOptions(List<User> doctors) {
+            User[] options = new User[doctors.size() + 1];
+            options[0] = nullDoctor();
+            for (int i = 0; i < doctors.size(); i++) {
+                options[i + 1] = doctors.get(i);
+            }
+            return options;
+        }
+
+        private static User nullDoctor() {
+            return new User(0, "", "", "Sin medico asignado", Role.MEDICO);
+        }
+
+        private static User findUser(List<User> users, User target) {
+            if (target == null) {
+                return nullDoctor();
+            }
+            for (User user : users) {
+                if (user.getId() == target.getId()) {
+                    return user;
+                }
+            }
+            return nullDoctor();
+        }
+
+        private static ImageIcon createPhotoIcon(byte[] photo) {
+            if (photo == null || photo.length == 0) {
+                return new ImageIcon(genericPersonImage());
+            }
+            Image image = new ImageIcon(photo).getImage().getScaledInstance(120, 120, Image.SCALE_SMOOTH);
+            return new ImageIcon(image);
+        }
+
+        private static Image genericPersonImage() {
+            BufferedImage image = new BufferedImage(120, 120, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g = image.createGraphics();
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setColor(new Color(236, 242, 248));
+            g.fillRoundRect(0, 0, 120, 120, 18, 18);
+            g.setColor(new Color(140, 153, 173));
+            g.fillOval(42, 24, 36, 36);
+            g.fillRoundRect(28, 68, 64, 34, 28, 28);
+            g.setStroke(new BasicStroke(2f));
+            g.setColor(new Color(203, 213, 225));
+            g.drawRoundRect(1, 1, 117, 117, 18, 18);
+            g.dispose();
+            return image;
         }
     }
 

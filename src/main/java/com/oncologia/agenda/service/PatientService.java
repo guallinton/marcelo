@@ -27,8 +27,12 @@ public class PatientService {
             throw new ValidationException("Nombre y apellido son obligatorios.");
         }
         if (isBlank(patient.getDni())) {
-            throw new ValidationException("El DNI es obligatorio y debe ser unico.");
+            throw new ValidationException("La CI es obligatoria y debe ser unica.");
         }
+        if (!CiUyValidator.isValid(patient.getDni())) {
+            throw new ValidationException("La CI no es valida. Verifique el digito verificador.");
+        }
+        patient.setCi(CiUyValidator.clean(patient.getDni()));
         if (patient.getProtocol() == null) {
             patient.setProtocol(ChemoProtocol.OTRO);
         }

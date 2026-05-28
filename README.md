@@ -2,7 +2,7 @@
 
 Aplicacion de escritorio Swing/FlatLaf para gestionar pacientes oncologicos y agenda de quimioterapia.
 
-Version actual: **1.3.0 - Multiplataforma**.
+Version actual: **1.4.0 - Ficha paciente CI**.
 
 ## Requisitos
 
@@ -13,7 +13,7 @@ Version actual: **1.3.0 - Multiplataforma**.
 
 ```bash
 ./mvnw -DskipTests package dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target/dependency
-java -cp "target/agenda-quimioterapia-1.3.0.jar:target/dependency/*" com.oncologia.agenda.AppLauncher
+java -cp "target/agenda-quimioterapia-1.4.0.jar:target/dependency/*" com.oncologia.agenda.AppLauncher
 ```
 
 Usuarios precargados:
@@ -82,7 +82,7 @@ scripts/deploy-unix.sh "$HOME/Aplicaciones"
 ## Funcionalidades principales
 
 - Login simple con roles.
-- ABM de pacientes para enfermeria con DNI unico, protocolo, alergias y alertas clinicas.
+- ABM de pacientes para enfermeria con CI unica validada, prestador, medico, foto, protocolo, alergias y alertas clinicas.
 - Agenda semanal y diaria con horario laboral configurable.
 - Validaciones de superposicion por cama/butaca, turno duplicado por paciente/dia y 15 minutos de limpieza.
 - Reprogramacion segun permisos: enfermeria todos, medico solo propios.

@@ -2,8 +2,8 @@ package com.oncologia.agenda;
 
 public final class AppInfo {
     public static final String NAME = "Agenda Quimioterapia";
-    public static final String VERSION = "1.3.0";
-    public static final String RELEASE_NAME = "Multiplataforma";
+    public static final String VERSION = "1.4.0";
+    public static final String RELEASE_NAME = "Ficha paciente CI";
 
     private AppInfo() {
     }

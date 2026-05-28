@@ -4,7 +4,7 @@ set -eu
 TARGET="${1:-$HOME/Desktop/cursor}"
 APPDIR="$TARGET/agenda-quimioterapia"
 DIST="target/agenda-quimioterapia-dist"
-JAR="agenda-quimioterapia-1.3.0.jar"
+JAR="agenda-quimioterapia-1.4.0.jar"
 
 MVN_CMD="./mvnw"
 if [ ! -x "$MVN_CMD" ]; then

@@ -2,6 +2,8 @@ package com.oncologia.agenda.dao;
 
 import com.oncologia.agenda.model.ChemoProtocol;
 import com.oncologia.agenda.model.Patient;
+import com.oncologia.agenda.model.Role;
+import com.oncologia.agenda.model.User;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -15,9 +17,9 @@ import java.util.Optional;
 public class PatientDao {
     public List<Patient> search(String query) {
         String like = "%" + (query == null ? "" : query.trim().toLowerCase()) + "%";
-        String sql = "SELECT * FROM patients "
-                + "WHERE LOWER(first_name) LIKE ? OR LOWER(last_name) LIKE ? OR dni LIKE ? "
-                + "ORDER BY last_name, first_name";
+        String sql = selectSql()
+                + "WHERE LOWER(p.first_name) LIKE ? OR LOWER(p.last_name) LIKE ? OR p.dni LIKE ? "
+                + "ORDER BY p.last_name, p.first_name";
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, like);
@@ -36,7 +38,7 @@ public class PatientDao {
     }
 
     public Optional<Patient> findById(long id) {
-        String sql = "SELECT * FROM patients WHERE id = ?";
+        String sql = selectSql() + "WHERE p.id = ?";
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setLong(1, id);
@@ -68,8 +70,8 @@ public class PatientDao {
 
     private Patient insert(Patient patient) {
         String sql = "INSERT INTO patients "
-                + "(first_name, last_name, dni, insurance, diagnosis, protocol, allergies, emergency_contact, neutropenic, fever) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                + "(first_name, last_name, dni, insurance, doctor_id, diagnosis, protocol, allergies, emergency_contact, photo, neutropenic, fever) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             fill(statement, patient);
@@ -81,22 +83,22 @@ public class PatientDao {
             }
             return patient;
         } catch (SQLException e) {
-            throw new DataAccessException("No se pudo crear paciente. DNI duplicado o datos invalidos.", e);
+            throw new DataAccessException("No se pudo crear paciente. CI duplicada o datos invalidos.", e);
         }
     }
 
     private void update(Patient patient) {
         String sql = "UPDATE patients "
-                + "SET first_name = ?, last_name = ?, dni = ?, insurance = ?, diagnosis = ?, protocol = ?, "
-                + "allergies = ?, emergency_contact = ?, neutropenic = ?, fever = ? "
+                + "SET first_name = ?, last_name = ?, dni = ?, insurance = ?, doctor_id = ?, diagnosis = ?, protocol = ?, "
+                + "allergies = ?, emergency_contact = ?, photo = ?, neutropenic = ?, fever = ? "
                 + "WHERE id = ?";
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             fill(statement, patient);
-            statement.setLong(11, patient.getId());
+            statement.setLong(13, patient.getId());
             statement.executeUpdate();
         } catch (SQLException e) {
-            throw new DataAccessException("No se pudo actualizar paciente. DNI duplicado o datos invalidos.", e);
+            throw new DataAccessException("No se pudo actualizar paciente. CI duplicada o datos invalidos.", e);
         }
     }
 
@@ -105,12 +107,18 @@ public class PatientDao {
         statement.setString(2, patient.getLastName());
         statement.setString(3, patient.getDni());
         statement.setString(4, patient.getInsurance());
-        statement.setString(5, patient.getDiagnosis());
-        statement.setString(6, patient.getProtocol().name());
-        statement.setString(7, patient.getAllergies());
-        statement.setString(8, patient.getEmergencyContact());
-        statement.setBoolean(9, patient.isNeutropenic());
-        statement.setBoolean(10, patient.isFever());
+        if (patient.getDoctor() == null || patient.getDoctor().getId() == 0) {
+            statement.setNull(5, java.sql.Types.BIGINT);
+        } else {
+            statement.setLong(5, patient.getDoctor().getId());
+        }
+        statement.setString(6, patient.getDiagnosis());
+        statement.setString(7, patient.getProtocol().name());
+        statement.setString(8, patient.getAllergies());
+        statement.setString(9, patient.getEmergencyContact());
+        statement.setBytes(10, patient.getPhoto());
+        statement.setBoolean(11, patient.isNeutropenic());
+        statement.setBoolean(12, patient.isFever());
     }
 
     private Patient map(ResultSet rs) throws SQLException {
@@ -120,12 +128,29 @@ public class PatientDao {
         patient.setLastName(rs.getString("last_name"));
         patient.setDni(rs.getString("dni"));
         patient.setInsurance(rs.getString("insurance"));
+        long doctorId = rs.getLong("doctor_id");
+        if (!rs.wasNull()) {
+            patient.setDoctor(new User(
+                    doctorId,
+                    rs.getString("doctor_username"),
+                    "",
+                    rs.getString("doctor_name"),
+                    Role.MEDICO
+            ));
+        }
         patient.setDiagnosis(rs.getString("diagnosis"));
         patient.setProtocol(ChemoProtocol.valueOf(rs.getString("protocol")));
         patient.setAllergies(rs.getString("allergies"));
         patient.setEmergencyContact(rs.getString("emergency_contact"));
+        patient.setPhoto(rs.getBytes("photo"));
         patient.setNeutropenic(rs.getBoolean("neutropenic"));
         patient.setFever(rs.getBoolean("fever"));
         return patient;
+    }
+
+    private String selectSql() {
+        return "SELECT p.*, d.username doctor_username, d.full_name doctor_name "
+                + "FROM patients p "
+                + "LEFT JOIN users d ON d.id = p.doctor_id ";
     }
 }

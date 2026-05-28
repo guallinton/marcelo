@@ -55,7 +55,7 @@ public class ReportService {
                 writer.line("Sin pacientes pendientes.");
             } else {
                 for (Patient patient : pending) {
-                    writer.line(String.format("- %s | DNI %s | %s", patient.getFullName(), patient.getDni(), patient.getProtocol().getLabel()));
+                    writer.line(String.format("- %s | CI %s | %s", patient.getFullName(), patient.getCi(), patient.getProtocol().getLabel()));
                 }
             }
             writer.blank();
