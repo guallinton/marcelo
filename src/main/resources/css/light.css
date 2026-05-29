@@ -1,0 +1,76 @@
+.root {
+    -fx-font-family: "Segoe UI", "Inter", "Arial", sans-serif;
+    -fx-font-size: 13px;
+    -fx-base: #f7f9fc;
+    -fx-background: #f7f9fc;
+    -fx-control-inner-background: #ffffff;
+    -fx-accent: #1976d2;
+}
+
+.app-shell {
+    -fx-background-color: #f7f9fc;
+}
+
+.panel {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 12;
+    -fx-border-color: #e0e6ef;
+    -fx-border-radius: 12;
+    -fx-padding: 12;
+}
+
+.title {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #172033;
+}
+
+.section-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #172033;
+}
+
+.muted {
+    -fx-text-fill: #5d6b82;
+}
+
+.danger {
+    -fx-text-fill: #b00020;
+    -fx-font-weight: bold;
+}
+
+.calendar-cell {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d9e1ec;
+    -fx-padding: 5;
+    -fx-min-height: 58;
+}
+
+.calendar-cell-empty:hover {
+    -fx-background-color: #e8f2ff;
+    -fx-cursor: hand;
+}
+
+.appointment-card {
+    -fx-background-radius: 8;
+    -fx-padding: 6;
+    -fx-text-fill: white;
+    -fx-font-size: 12px;
+    -fx-cursor: hand;
+}
+
+.toolbar {
+    -fx-background-color: #ffffff;
+    -fx-border-color: transparent transparent #e0e6ef transparent;
+    -fx-padding: 10;
+}
+
+.login-card {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 18;
+    -fx-border-color: #d9e1ec;
+    -fx-border-radius: 18;
+    -fx-padding: 28;
+    -fx-effect: dropshadow(gaussian, rgba(23, 32, 51, 0.16), 18, 0, 0, 4);
+}
