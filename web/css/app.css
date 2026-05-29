@@ -474,6 +474,26 @@ textarea {
   color: #be123c;
 }
 
+.app-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(120%);
+  background: #1a2b3c;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  z-index: 9999;
+  box-shadow: var(--shadow);
+  transition: transform 0.25s ease;
+  max-width: min(420px, calc(100vw - 32px));
+}
+
+.app-toast.is-visible {
+  transform: translateX(-50%) translateY(0);
+}
+
 .agenda-root {
   min-width: 0;
   height: 100%;

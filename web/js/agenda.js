@@ -116,6 +116,9 @@ window.AgendaView = (function () {
   }
 
   function createCalendar(rootEl, options, callbacks) {
+    if (typeof FullCalendar === "undefined") {
+      throw new Error("FullCalendar no esta cargado");
+    }
     lastCallbacks = callbacks;
     calendarEl = rootEl;
     const viewName = options.view === "week" ? "timeGridWeek" : "timeGridDay";
@@ -189,6 +192,11 @@ window.AgendaView = (function () {
   }
 
   function updateCalendar(options, callbacks) {
+    if (!calendar) {
+      options.root.innerHTML = '<div id="calendar" class="fc-theme-agenda"></div>';
+      const el = options.root.querySelector("#calendar");
+      return createCalendar(el, options, callbacks);
+    }
     lastCallbacks = callbacks;
     const viewName = options.view === "week" ? "timeGridWeek" : "timeGridDay";
     if (calendar.view.type !== viewName) {
@@ -294,6 +302,7 @@ window.AgendaView = (function () {
     if (calendar) {
       calendar.destroy();
       calendar = null;
+      calendarEl = null;
     }
   }
 

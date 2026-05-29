@@ -1,36 +1,25 @@
 (function () {
   const cfg = window.AgendaConfig;
   const storage = window.AgendaStorage;
-  const viewApi = window.AgendaView;
+
+  function getViewApi() {
+    return window.AgendaView;
+  }
 
   const state = {
     user: null,
     screen: "list",
     view: "week",
-    baseDate: startOfWeek(new Date()),
+    baseDate: null,
     selectedDoctorId: null,
     selectedAppointmentId: null,
     editingId: null
   };
 
-  const $ = (id) => document.getElementById(id);
-
-  const loginScreen = $("login-screen");
-  const appScreen = $("app-screen");
-  const loginForm = $("login-form");
-  const loginError = $("login-error");
-  const agendaRoot = $("agenda-root");
-  const turnosListPanel = $("turnos-list-panel");
-  const doctorList = $("doctor-list");
-  const detailContent = $("detail-content");
-  const agendaMetrics = $("agenda-metrics");
-  const agendaTitle = $("agenda-title");
-  const agendaRange = $("agenda-range");
-  const baseDateInput = $("base-date");
-  const appointmentDialog = $("appointment-dialog");
-  const appointmentForm = $("appointment-form");
-  const apptWarning = $("appt-warning");
-  const detailPanel = document.querySelector(".detail-panel");
+  let $ = function () {};
+  let loginScreen, appScreen, loginForm, loginError, agendaRoot, turnosListPanel;
+  let doctorList, detailContent, agendaMetrics, agendaTitle, agendaRange, baseDateInput;
+  let appointmentDialog, appointmentForm, apptWarning, detailPanel;
 
   function startOfWeek(date) {
     return storage.startOfWeek(date);
@@ -41,9 +30,7 @@
   }
 
   function parseInputDate(value) {
-    if (!value) {
-      return new Date();
-    }
+    if (!value) return new Date();
     const [y, m, d] = value.split("-").map(Number);
     return new Date(y, m - 1, d);
   }
@@ -61,12 +48,8 @@
   }
 
   function canEditAppointment(appt) {
-    if (!state.user || !appt) {
-      return false;
-    }
-    if (state.user.role === "ENFERMERIA") {
-      return true;
-    }
+    if (!state.user || !appt) return false;
+    if (state.user.role === "ENFERMERIA") return true;
     return appt.createdById === state.user.id;
   }
 
@@ -74,6 +57,7 @@
     loginScreen.hidden = false;
     appScreen.hidden = true;
     state.user = null;
+    state.selectedAppointmentId = null;
   }
 
   function showApp() {
@@ -81,34 +65,29 @@
     appScreen.hidden = false;
     state.screen = "list";
     state.selectedAppointmentId = null;
+    state.baseDate = startOfWeek(new Date());
     $("session-user").textContent = state.user.fullName;
     const badge = $("session-role");
     badge.textContent = roleLabel(state.user.role);
     badge.className = "badge " + (state.user.role === "ENFERMERIA" ? "badge--nurse" : "badge--doctor");
     baseDateInput.value = toIsoDate(state.baseDate);
+    storage.load();
     syncScreenTabs();
     refresh();
   }
 
   function syncScreenTabs() {
     document.querySelectorAll("[data-screen]").forEach((btn) => {
-      const active =
-        btn.dataset.screen === state.screen ||
-        (state.screen === "calendar" && btn.dataset.screen === "calendar");
-      btn.classList.toggle("is-active", active);
+      btn.classList.toggle("is-active", btn.dataset.screen === state.screen);
     });
     turnosListPanel.hidden = state.screen !== "list";
     agendaRoot.hidden = state.screen !== "calendar";
   }
 
   function rangeForView() {
-    if (state.view === "week") {
-      const from = toIsoDate(state.baseDate);
-      const to = toIsoDate(storage.addDays(state.baseDate, 6));
-      return { from, to };
-    }
-    const day = toIsoDate(state.baseDate);
-    return { from: day, to: day };
+    const from = toIsoDate(state.baseDate);
+    const to = toIsoDate(storage.addDays(state.baseDate, 6));
+    return { from, to };
   }
 
   function loadAppointments() {
@@ -117,27 +96,44 @@
   }
 
   function syncBaseDateFromCalendar() {
+    const viewApi = getViewApi();
     const d = viewApi.getCalendarDate();
-    if (!d) {
-      return;
-    }
-    state.baseDate = state.view === "week" ? startOfWeek(d) : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    if (!d) return;
+    state.baseDate = startOfWeek(d);
     baseDateInput.value = toIsoDate(state.baseDate);
     const title = viewApi.getViewTitle();
-    if (title) {
-      agendaRange.textContent = title;
-    }
+    if (title) agendaRange.textContent = title;
   }
 
   function refresh() {
-    renderDoctors();
-    if (state.screen === "list") {
-      renderTurnosList();
-    } else {
-      renderAgenda();
+    if (!state.user) return;
+    try {
+      renderDoctors();
+      if (state.screen === "list") {
+        renderTurnosList();
+      } else {
+        renderAgenda();
+      }
+      renderDetail();
+      updateToolbar();
+    } catch (err) {
+      console.error("Error al actualizar vista:", err);
+      showToast("Error al actualizar la pantalla: " + err.message);
     }
-    renderDetail();
-    updateToolbar();
+  }
+
+  function showToast(message) {
+    let el = document.getElementById("app-toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "app-toast";
+      el.className = "app-toast";
+      document.body.appendChild(el);
+    }
+    el.textContent = message;
+    el.classList.add("is-visible");
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(() => el.classList.remove("is-visible"), 4000);
   }
 
   function computeConflicts(appointments) {
@@ -161,6 +157,7 @@
   }
 
   function renderTurnosList() {
+    const viewApi = getViewApi();
     const appointments = loadAppointments()
       .filter((a) => !state.selectedDoctorId || a.doctorId === state.selectedDoctorId)
       .sort((a, b) => new Date(a.start) - new Date(b.start));
@@ -170,9 +167,8 @@
 
     if (!appointments.length) {
       turnosListPanel.innerHTML =
-        '<p class="turnos-list-empty">No hay turnos ocupados en este periodo. Use «Nuevo turno» o cambie la fecha.</p>';
-      agendaMetrics.innerHTML =
-        '<span class="metric-pill">Turnos ocupados: <strong>0</strong></span>';
+        '<p class="turnos-list-empty">No hay turnos en esta semana. Pulse <strong>Hoy</strong> o <strong>Nuevo turno</strong>.</p>';
+      agendaMetrics.innerHTML = '<span class="metric-pill">Turnos ocupados: <strong>0</strong></span>';
       return;
     }
 
@@ -188,12 +184,9 @@
           day: "numeric",
           month: "short"
         });
-        const patientName = patient
-          ? `${patient.firstName} ${patient.lastName}`
-          : "Paciente";
-        const color = cfg.doctorColors[
-          Math.max(0, doctors.findIndex((d) => d.id === appt.doctorId)) % cfg.doctorColors.length
-        ];
+        const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Paciente";
+        const docIdx = doctors.findIndex((d) => d.id === appt.doctorId);
+        const color = cfg.doctorColors[(docIdx >= 0 ? docIdx : 0) % cfg.doctorColors.length];
         const conflict = conflicts.has(appt.id);
         const selected = state.selectedAppointmentId === appt.id;
         return (
@@ -212,17 +205,7 @@
     turnosListPanel.innerHTML =
       '<table class="turnos-table" aria-label="Turnos ocupados por paciente">' +
       "<thead><tr><th>Paciente</th><th>Fecha y hora</th><th>Protocolo</th><th>Medico</th><th>Cama</th></tr></thead>" +
-      "<tbody>" +
-      rows +
-      "</tbody></table>";
-
-    turnosListPanel.querySelectorAll(".turno-row").forEach((row) => {
-      row.addEventListener("click", () => {
-        state.selectedAppointmentId = Number(row.dataset.id);
-        detailPanel.classList.add("is-open");
-        refresh();
-      });
-    });
+      "<tbody>" + rows + "</tbody></table>";
 
     agendaMetrics.innerHTML =
       `<span class="metric-pill">Turnos ocupados: <strong>${appointments.length}</strong></span>` +
@@ -232,31 +215,30 @@
   }
 
   function updateToolbar() {
+    const viewApi = getViewApi();
     agendaTitle.textContent =
-      state.screen === "list"
-        ? "Turnos ocupados por paciente"
-        : state.view === "week"
-          ? "Agenda semanal"
-          : "Agenda diaria";
+      state.screen === "list" ? "Turnos ocupados por paciente" : "Agenda semanal (calendario)";
     agendaRange.textContent =
       state.screen === "list"
         ? viewApi.formatRange("week", state.baseDate)
-        : viewApi.getViewTitle() || viewApi.formatRange(state.view, state.baseDate);
+        : viewApi.getViewTitle() || viewApi.formatRange("week", state.baseDate);
     $("btn-new-appointment").disabled = !canWrite();
-    $("btn-edit-appointment").disabled = !state.selectedAppointmentId || !selectedAppointmentEditable();
+    const canEdit = state.selectedAppointmentId && selectedAppointmentEditable();
+    $("btn-edit-appointment").disabled = !canEdit;
     $("btn-delete-appointment").disabled = !state.selectedAppointmentId || !canDelete();
   }
 
   function selectedAppointmentEditable() {
-    const appt = findAppointment(state.selectedAppointmentId);
-    return canEditAppointment(appt);
+    return canEditAppointment(findAppointment(state.selectedAppointmentId));
   }
 
   function findAppointment(id) {
+    if (!id) return null;
     return storage.load().appointments.find((a) => a.id === id) || null;
   }
 
   function renderDoctors() {
+    const viewApi = getViewApi();
     const doctors = storage.getDoctors();
     const appointments = loadAppointments();
     const query = ($("doctor-search").value || "").trim().toLowerCase();
@@ -268,7 +250,7 @@
     allBtn.className = "doctor-card" + (state.selectedDoctorId ? "" : " is-active");
     allBtn.innerHTML =
       '<div class="doctor-card__avatar" style="background:#5f7388">*</div>' +
-      '<div><p class="doctor-card__name">Todos</p><p class="doctor-card__meta">Ver agenda completa</p></div>' +
+      '<div><p class="doctor-card__name">Todos</p><p class="doctor-card__meta">Ver todos los turnos</p></div>' +
       `<span class="doctor-card__count">${appointments.length}</span>`;
     allBtn.addEventListener("click", () => {
       state.selectedDoctorId = null;
@@ -277,7 +259,12 @@
     doctorList.appendChild(allBtn);
 
     doctors
-      .filter((d) => !query || d.fullName.toLowerCase().includes(query) || d.username.toLowerCase().includes(query))
+      .filter(
+        (d) =>
+          !query ||
+          d.fullName.toLowerCase().includes(query) ||
+          d.username.toLowerCase().includes(query)
+      )
       .forEach((doctor, index) => {
         const count = viewApi.countByDoctor(appointments, doctor.id);
         const color = cfg.doctorColors[index % cfg.doctorColors.length];
@@ -304,17 +291,23 @@
   }
 
   function renderAgenda() {
-    const appointments = loadAppointments();
-    const patients = storage.getPatients();
-    const doctors = storage.getDoctors();
+    const viewApi = getViewApi();
+    if (typeof FullCalendar === "undefined") {
+      agendaRoot.hidden = false;
+      agendaRoot.innerHTML =
+        '<p class="turnos-list-empty">Calendario no disponible sin internet (FullCalendar). Use la pestaña <strong>Turnos ocupados</strong>.</p>';
+      agendaMetrics.innerHTML = "";
+      return;
+    }
 
+    const appointments = loadAppointments();
     const result = viewApi.render({
       root: agendaRoot,
       view: state.view,
       baseDate: state.baseDate,
       appointments,
-      patients,
-      doctors,
+      patients: storage.getPatients(),
+      doctors: storage.getDoctors(),
       doctorFilterId: state.selectedDoctorId,
       selectedId: state.selectedAppointmentId,
       canEdit: canWrite(),
@@ -324,24 +317,24 @@
         detailPanel.classList.add("is-open");
         refresh();
       },
-      onDatesChange: () => {
-        syncBaseDateFromCalendar();
-      }
+      onDatesChange: () => syncBaseDateFromCalendar()
     });
 
     const m = result.metrics;
     agendaMetrics.innerHTML =
       `<span class="metric-pill">Turnos: <strong>${m.appointmentCount}</strong></span>` +
-      `<span class="metric-pill">Bloques ocupados: <strong>${m.occupied}</strong></span>` +
+      `<span class="metric-pill">Bloques: <strong>${m.occupied}</strong></span>` +
       (m.conflictCount
         ? `<span class="metric-pill">Conflictos: <strong style="color:#be123c">${m.conflictCount}</strong></span>`
         : "");
   }
 
   function renderDetail() {
+    const viewApi = getViewApi();
     const appt = findAppointment(state.selectedAppointmentId);
     if (!appt) {
-      detailContent.innerHTML = '<p class="detail-empty">Seleccione un turno en la agenda para ver el detalle.</p>';
+      detailContent.innerHTML =
+        '<p class="detail-empty">Seleccione un turno de la lista o del calendario.</p>';
       return;
     }
 
@@ -351,12 +344,9 @@
     const start = new Date(appt.start);
     const end = storage.appointmentEnd(appt);
     const alerts = [];
-    if (patient && patient.neutropenic) {
-      alerts.push("Neutropenia");
-    }
-    if (patient && patient.fever) {
-      alerts.push("Fiebre");
-    }
+    if (patient && patient.neutropenic) alerts.push("Neutropenia");
+    if (patient && patient.fever) alerts.push("Fiebre");
+    if (patient && patient.scalpCooling) alerts.push("Casco enfriamiento");
 
     detailContent.innerHTML =
       '<div class="detail-card">' +
@@ -370,47 +360,65 @@
             "Infusion " + protocol.infusionMinutes + " min · Butaca " + protocol.duration + " min"
           )
         : "") +
-      (patient && patient.scalpCooling ? row("Casco enfriamiento", "Si — scalp cooling") : "") +
       row("Medico", doctor ? doctor.fullName : "—") +
       row("Horario", formatTime(start) + " – " + formatTime(end) + " (" + appt.durationMinutes + " min)") +
       row("Cama / Butaca", String(appt.bedChair)) +
       row("Diagnostico", patient ? patient.diagnosis || "—" : "—") +
       (alerts.length ? row("Alertas", alerts.join(", ")) : "") +
       "</div>";
-  }
 
-  function row(label, value) {
-    return (
-      '<div class="detail-row"><span>' +
-      viewApi.escapeHtml(label) +
-      '</span><strong>' +
-      viewApi.escapeHtml(value) +
-      "</strong></div>"
-    );
+    function row(label, value) {
+      return (
+        '<div class="detail-row"><span>' +
+        viewApi.escapeHtml(label) +
+        '</span><strong>' +
+        viewApi.escapeHtml(value) +
+        "</strong></div>"
+      );
+    }
   }
 
   function formatTime(date) {
     return String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0");
   }
 
+  function defaultProtocolDuration(patientId) {
+    const patient = storage.getPatient(patientId);
+    if (!patient) return 60;
+    const protocol = cfg.protocols.find((p) => p.id === patient.protocolId);
+    return protocol ? protocol.duration : 60;
+  }
+
   function openNewAppointment(slot) {
+    if (!canWrite()) return;
     state.editingId = null;
+    const patients = storage.getPatients();
+    const doctors = storage.getDoctors();
+    if (!patients.length) {
+      showToast("No hay pacientes cargados.");
+      return;
+    }
     $("appointment-dialog-title").textContent = "Nuevo turno";
     fillAppointmentForm({
-      patientId: "",
-      doctorId: state.selectedDoctorId || storage.getDoctors()[0]?.id || "",
-      date: slot.dateIso,
-      time: slot.time,
-      duration: 60,
-      bed: slot.bed
+      patientId: patients[0].id,
+      doctorId: state.selectedDoctorId || doctors[0]?.id || 2,
+      date: slot.dateIso || toIsoDate(state.baseDate),
+      time: slot.time || cfg.workStart,
+      duration: defaultProtocolDuration(patients[0].id),
+      bed: slot.bed || 1
     });
     apptWarning.hidden = true;
-    appointmentDialog.showModal();
+    if (typeof appointmentDialog.showModal === "function") {
+      appointmentDialog.showModal();
+    } else {
+      appointmentDialog.setAttribute("open", "");
+    }
   }
 
   function openEditAppointment() {
     const appt = findAppointment(state.selectedAppointmentId);
     if (!appt || !canEditAppointment(appt)) {
+      showToast("No puede editar este turno.");
       return;
     }
     state.editingId = appt.id;
@@ -427,23 +435,31 @@
     appointmentDialog.showModal();
   }
 
+  function closeAppointmentDialog() {
+    appointmentDialog.close();
+    apptWarning.hidden = true;
+  }
+
   function fillAppointmentForm(values) {
-    const patientSelect = $("appt-patient");
-    const doctorSelect = $("appt-doctor");
+    const viewApi = getViewApi();
     const patients = storage.getPatients();
     const doctors = storage.getDoctors();
+    const patientId = values.patientId || patients[0]?.id;
+    const doctorId = values.doctorId || doctors[0]?.id;
 
-    patientSelect.innerHTML = patients
+    $("appt-patient").innerHTML = patients
       .map(
         (p) =>
-          `<option value="${p.id}"${p.id === values.patientId ? " selected" : ""}>${viewApi.escapeHtml(p.firstName + " " + p.lastName)} (${viewApi.escapeHtml(p.ci)})</option>`
+          `<option value="${p.id}"${p.id === patientId ? " selected" : ""}>${viewApi.escapeHtml(
+            p.firstName + " " + p.lastName
+          )} (${viewApi.escapeHtml(p.ci)})</option>`
       )
       .join("");
 
-    doctorSelect.innerHTML = doctors
+    $("appt-doctor").innerHTML = doctors
       .map(
         (d) =>
-          `<option value="${d.id}"${d.id === values.doctorId ? " selected" : ""}>${viewApi.escapeHtml(d.fullName)}</option>`
+          `<option value="${d.id}"${d.id === doctorId ? " selected" : ""}>${viewApi.escapeHtml(d.fullName)}</option>`
       )
       .join("");
 
@@ -451,12 +467,26 @@
     $("appt-time").value = values.time;
     $("appt-duration").value = values.duration;
     $("appt-bed").value = values.bed;
+
+    $("appt-patient").onchange = () => {
+      const pid = Number($("appt-patient").value);
+      if (!state.editingId) {
+        $("appt-duration").value = defaultProtocolDuration(pid);
+      }
+    };
   }
 
   function saveAppointmentFromForm(event) {
-    event.preventDefault();
-    apptWarning.hidden = true;
+    if (event) event.preventDefault();
 
+    const patients = storage.getPatients();
+    if (!patients.length) {
+      apptWarning.textContent = "Debe existir al menos un paciente.";
+      apptWarning.hidden = false;
+      return;
+    }
+
+    apptWarning.hidden = true;
     const appt = {
       id: state.editingId || 0,
       patientId: Number($("appt-patient").value),
@@ -468,14 +498,16 @@
 
     if (state.editingId) {
       const existing = findAppointment(state.editingId);
-      appt.createdById = existing.createdById;
+      if (existing) appt.createdById = existing.createdById;
     }
 
     try {
       const saved = storage.saveAppointment(appt, state.user, !!state.editingId);
-      appointmentDialog.close();
+      closeAppointmentDialog();
       state.selectedAppointmentId = saved.id;
+      state.editingId = null;
       refresh();
+      showToast("Turno guardado correctamente.");
     } catch (err) {
       apptWarning.textContent = err.message;
       apptWarning.hidden = false;
@@ -484,129 +516,179 @@
 
   function deleteSelected() {
     if (!state.selectedAppointmentId || !canDelete()) {
+      showToast("Solo enfermeria puede eliminar turnos.");
       return;
     }
-    if (!confirm("¿Eliminar este turno?")) {
-      return;
-    }
+    if (!confirm("¿Eliminar este turno?")) return;
     try {
       storage.deleteAppointment(state.selectedAppointmentId, state.user);
       state.selectedAppointmentId = null;
       refresh();
+      showToast("Turno eliminado.");
     } catch (err) {
       alert(err.message);
     }
   }
 
-  loginForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    loginError.hidden = true;
-    const user = storage.authenticate($("login-username").value, $("login-password").value);
-    if (!user) {
-      loginError.textContent = "Usuario o contrasena incorrectos.";
-      loginError.hidden = false;
-      return;
-    }
-    state.user = user;
-    state.baseDate = startOfWeek(new Date());
-    state.screen = "list";
-    showApp();
-  });
-
-  $("btn-logout").addEventListener("click", () => {
-    viewApi.destroy();
-    showLogin();
-  });
-
   function shiftPeriod(deltaDays) {
     state.baseDate = storage.addDays(state.baseDate, deltaDays);
     baseDateInput.value = toIsoDate(state.baseDate);
     if (state.screen === "calendar") {
-      viewApi.gotoDate(state.baseDate);
+      getViewApi().gotoDate(state.baseDate);
     }
   }
 
-  $("btn-prev").addEventListener("click", () => {
-    if (state.screen === "calendar") {
-      viewApi.navigatePrev();
-      syncBaseDateFromCalendar();
-    } else {
-      shiftPeriod(-7);
-    }
-    refresh();
-  });
-
-  $("btn-next").addEventListener("click", () => {
-    if (state.screen === "calendar") {
-      viewApi.navigateNext();
-      syncBaseDateFromCalendar();
-    } else {
-      shiftPeriod(7);
-    }
-    refresh();
-  });
-
-  $("btn-today").addEventListener("click", () => {
-    state.baseDate = startOfWeek(new Date());
-    baseDateInput.value = toIsoDate(state.baseDate);
-    if (state.screen === "calendar") {
-      viewApi.navigateToday();
-      syncBaseDateFromCalendar();
-    }
-    refresh();
-  });
-
-  baseDateInput.addEventListener("change", () => {
-    const picked = parseInputDate(baseDateInput.value);
-    state.baseDate = startOfWeek(picked);
-    baseDateInput.value = toIsoDate(state.baseDate);
-    if (state.screen === "calendar") {
-      viewApi.gotoDate(state.baseDate);
-    }
-    refresh();
-  });
-
-  document.querySelectorAll("[data-screen]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      state.screen = btn.dataset.screen;
-      if (state.screen === "calendar") {
-        state.view = btn.dataset.view || "week";
-        viewApi.gotoDate(state.baseDate);
+  function bindEvents() {
+    loginForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      loginError.hidden = true;
+      const user = storage.authenticate(
+        $("login-username").value,
+        $("login-password").value
+      );
+      if (!user) {
+        loginError.textContent = "Usuario o contrasena incorrectos.";
+        loginError.hidden = false;
+        return;
       }
-      syncScreenTabs();
+      state.user = user;
+      showApp();
+    });
+
+    $("btn-logout").addEventListener("click", () => {
+      getViewApi().destroy();
+      agendaRoot.innerHTML = "";
+      showLogin();
+    });
+
+    $("btn-prev").addEventListener("click", () => {
+      if (state.screen === "calendar") {
+        getViewApi().navigatePrev();
+        syncBaseDateFromCalendar();
+      } else {
+        shiftPeriod(-7);
+      }
       refresh();
     });
-  });
 
-  $("btn-new-appointment").addEventListener("click", () => {
-    openNewAppointment({
-      dateIso: toIsoDate(state.baseDate),
-      time: cfg.workStart,
-      bed: 1
+    $("btn-next").addEventListener("click", () => {
+      if (state.screen === "calendar") {
+        getViewApi().navigateNext();
+        syncBaseDateFromCalendar();
+      } else {
+        shiftPeriod(7);
+      }
+      refresh();
     });
-  });
 
-  $("btn-edit-appointment").addEventListener("click", openEditAppointment);
-  $("btn-delete-appointment").addEventListener("click", deleteSelected);
-  appointmentForm.addEventListener("submit", saveAppointmentFromForm);
+    $("btn-today").addEventListener("click", () => {
+      state.baseDate = startOfWeek(new Date());
+      baseDateInput.value = toIsoDate(state.baseDate);
+      if (state.screen === "calendar") {
+        getViewApi().gotoDate(state.baseDate);
+        syncBaseDateFromCalendar();
+      }
+      refresh();
+    });
 
-  document.querySelectorAll("[data-close]").forEach((btn) => {
-    btn.addEventListener("click", () => appointmentDialog.close());
-  });
+    baseDateInput.addEventListener("change", () => {
+      state.baseDate = startOfWeek(parseInputDate(baseDateInput.value));
+      baseDateInput.value = toIsoDate(state.baseDate);
+      if (state.screen === "calendar") {
+        getViewApi().gotoDate(state.baseDate);
+      }
+      refresh();
+    });
 
-  $("doctor-search").addEventListener("input", renderDoctors);
+    document.querySelectorAll("[data-screen]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.screen = btn.dataset.screen;
+        if (state.screen === "calendar") {
+          state.view = btn.dataset.view || "week";
+        }
+        syncScreenTabs();
+        refresh();
+      });
+    });
 
-  $("btn-toggle-sidebar").addEventListener("click", () => {
-    const sidebar = document.querySelector(".doctor-sidebar");
-    sidebar.classList.toggle("is-collapsed");
-    $("btn-toggle-sidebar").textContent = sidebar.classList.contains("is-collapsed")
-      ? "Mostrar"
-      : "Ocultar";
-  });
+    $("btn-new-appointment").addEventListener("click", () => openNewAppointment({}));
 
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && appointmentDialog.open) {
-      appointmentDialog.close();
+    $("btn-edit-appointment").addEventListener("click", (e) => {
+      e.preventDefault();
+      openEditAppointment();
+    });
+
+    $("btn-delete-appointment").addEventListener("click", (e) => {
+      e.preventDefault();
+      deleteSelected();
+    });
+
+    appointmentForm.addEventListener("submit", saveAppointmentFromForm);
+
+    appointmentDialog.querySelectorAll("[data-close]").forEach((btn) => {
+      btn.addEventListener("click", closeAppointmentDialog);
+    });
+
+    $("doctor-search").addEventListener("input", () => {
+      renderDoctors();
+      if (state.screen === "list") renderTurnosList();
+      else renderAgenda();
+    });
+
+    $("btn-toggle-sidebar").addEventListener("click", () => {
+      const sidebar = document.querySelector(".doctor-sidebar");
+      sidebar.classList.toggle("is-collapsed");
+      $("btn-toggle-sidebar").textContent = sidebar.classList.contains("is-collapsed")
+        ? "Mostrar"
+        : "Ocultar";
+    });
+
+    turnosListPanel.addEventListener("click", (e) => {
+      const row = e.target.closest(".turno-row");
+      if (!row) return;
+      state.selectedAppointmentId = Number(row.dataset.id);
+      detailPanel.classList.add("is-open");
+      refresh();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && appointmentDialog.open) {
+        closeAppointmentDialog();
+      }
+    });
+  }
+
+  function init() {
+    $ = (id) => document.getElementById(id);
+    loginScreen = $("login-screen");
+    appScreen = $("app-screen");
+    loginForm = $("login-form");
+    loginError = $("login-error");
+    agendaRoot = $("agenda-root");
+    turnosListPanel = $("turnos-list-panel");
+    doctorList = $("doctor-list");
+    detailContent = $("detail-content");
+    agendaMetrics = $("agenda-metrics");
+    agendaTitle = $("agenda-title");
+    agendaRange = $("agenda-range");
+    baseDateInput = $("base-date");
+    appointmentDialog = $("appointment-dialog");
+    appointmentForm = $("appointment-form");
+    apptWarning = $("appt-warning");
+    detailPanel = document.querySelector(".detail-panel");
+
+    if (!loginForm || !appScreen) {
+      console.error("Elementos de la app no encontrados en el HTML.");
+      return;
     }
-  });
+
+    state.baseDate = startOfWeek(new Date());
+    bindEvents();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
 })();

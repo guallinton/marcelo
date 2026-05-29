@@ -112,7 +112,7 @@
   </div>
 
   <dialog id="appointment-dialog" class="modal">
-    <form id="appointment-form" method="dialog" class="modal__body">
+    <form id="appointment-form" class="modal__body" novalidate>
       <header class="modal__header">
         <h2 id="appointment-dialog-title">Nuevo turno</h2>
         <button type="button" class="btn btn--icon modal-close" data-close>&times;</button>
@@ -146,7 +146,7 @@
       <p id="appt-warning" class="form-warning" hidden></p>
       <footer class="modal__footer">
         <button type="button" class="btn btn--ghost" data-close>Cancelar</button>
-        <button type="submit" class="btn btn--primary">Guardar turno</button>
+        <button type="submit" id="btn-save-appointment" class="btn btn--primary">Guardar turno</button>
       </footer>
     </form>
   </dialog>

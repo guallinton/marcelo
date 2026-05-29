@@ -138,12 +138,56 @@ window.AgendaStorage = (function () {
         save(data);
         return data;
       }
-      return JSON.parse(raw);
+      const data = JSON.parse(raw);
+      alignDemoAppointmentsToCurrentWeek(data);
+      save(data);
+      return data;
     } catch (e) {
       const data = defaultData();
       save(data);
       return data;
     }
+  }
+
+  /** Reubica turnos demo (id 1-5) a la semana actual si no hay turnos visibles. */
+  function alignDemoAppointmentsToCurrentWeek(data) {
+    const monday = startOfWeek(new Date());
+    const from = new Date(toIsoDate(monday) + "T00:00:00");
+    const to = new Date(toIsoDate(addDays(monday, 6)) + "T23:59:59");
+    const inWeek = data.appointments.filter((a) => {
+      const s = new Date(a.start);
+      return s >= from && s <= to;
+    });
+    if (inWeek.length > 0) {
+      return;
+    }
+    const fmt = (date, time) => `${toIsoDate(date)}T${time}:00`;
+    const plan = [
+      { id: 1, day: 0, time: "08:30", durationMinutes: 180, bedChair: 1, patientId: 1 },
+      { id: 2, day: 1, time: "09:00", durationMinutes: 120, bedChair: 2, patientId: 2 },
+      { id: 3, day: 2, time: "10:00", durationMinutes: 60, bedChair: 1, patientId: 3 },
+      { id: 4, day: 3, time: "08:00", durationMinutes: 240, bedChair: 3, patientId: 4 },
+      { id: 5, day: 4, time: "14:00", durationMinutes: 90, bedChair: 2, patientId: 1 }
+    ];
+    plan.forEach((item) => {
+      let appt = data.appointments.find((a) => a.id === item.id);
+      if (!appt) {
+        appt = {
+          id: item.id,
+          patientId: item.patientId,
+          doctorId: 2,
+          createdById: 1,
+          start: fmt(addDays(monday, item.day), item.time),
+          durationMinutes: item.durationMinutes,
+          bedChair: item.bedChair
+        };
+        data.appointments.push(appt);
+        return;
+      }
+      appt.start = fmt(addDays(monday, item.day), item.time);
+      appt.durationMinutes = item.durationMinutes;
+      appt.bedChair = item.bedChair;
+    });
   }
 
   function save(data) {
@@ -364,6 +408,7 @@ window.AgendaStorage = (function () {
     findOverlaps,
     appointmentEnd,
     appointmentEndWithCleaning,
+    alignDemoAppointmentsToCurrentWeek,
     resetDemo,
     toIsoDate,
     parseIsoDate,
