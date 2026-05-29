@@ -100,6 +100,19 @@
     return storage.getAppointmentsBetween(from, to);
   }
 
+  function syncBaseDateFromCalendar() {
+    const d = viewApi.getCalendarDate();
+    if (!d) {
+      return;
+    }
+    state.baseDate = state.view === "week" ? startOfWeek(d) : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    baseDateInput.value = toIsoDate(state.baseDate);
+    const title = viewApi.getViewTitle();
+    if (title) {
+      agendaRange.textContent = title;
+    }
+  }
+
   function refresh() {
     renderDoctors();
     renderAgenda();
@@ -109,7 +122,8 @@
 
   function updateToolbar() {
     agendaTitle.textContent = state.view === "week" ? "Agenda semanal" : "Agenda diaria";
-    agendaRange.textContent = viewApi.formatRange(state.view, state.baseDate);
+    agendaRange.textContent =
+      viewApi.getViewTitle() || viewApi.formatRange(state.view, state.baseDate);
     $("btn-new-appointment").disabled = !canWrite();
     $("btn-edit-appointment").disabled = !state.selectedAppointmentId || !selectedAppointmentEditable();
     $("btn-delete-appointment").disabled = !state.selectedAppointmentId || !canDelete();
@@ -191,6 +205,9 @@
         state.selectedAppointmentId = id;
         detailPanel.classList.add("is-open");
         refresh();
+      },
+      onDatesChange: () => {
+        syncBaseDateFromCalendar();
       }
     });
 
@@ -377,25 +394,26 @@
     showApp();
   });
 
-  $("btn-logout").addEventListener("click", showLogin);
+  $("btn-logout").addEventListener("click", () => {
+    viewApi.destroy();
+    showLogin();
+  });
 
   $("btn-prev").addEventListener("click", () => {
-    const delta = state.view === "week" ? -7 : -1;
-    state.baseDate = storage.addDays(state.baseDate, delta);
-    baseDateInput.value = toIsoDate(state.baseDate);
+    viewApi.navigatePrev();
+    syncBaseDateFromCalendar();
     refresh();
   });
 
   $("btn-next").addEventListener("click", () => {
-    const delta = state.view === "week" ? 7 : 1;
-    state.baseDate = storage.addDays(state.baseDate, delta);
-    baseDateInput.value = toIsoDate(state.baseDate);
+    viewApi.navigateNext();
+    syncBaseDateFromCalendar();
     refresh();
   });
 
   $("btn-today").addEventListener("click", () => {
-    state.baseDate = state.view === "week" ? startOfWeek(new Date()) : new Date();
-    baseDateInput.value = toIsoDate(state.baseDate);
+    viewApi.navigateToday();
+    syncBaseDateFromCalendar();
     refresh();
   });
 
@@ -403,6 +421,7 @@
     const picked = parseInputDate(baseDateInput.value);
     state.baseDate = state.view === "week" ? startOfWeek(picked) : picked;
     baseDateInput.value = toIsoDate(state.baseDate);
+    viewApi.gotoDate(state.baseDate);
     refresh();
   });
 
