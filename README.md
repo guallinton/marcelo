@@ -6,13 +6,25 @@ Version actual: **1.9.0 - Protocolos internacionales y casco**.
 
 ## Version web (HTML / CSS / JavaScript)
 
-Carpeta [`web/`](web/): agenda responsive centrada en la visualizacion semanal y diaria, con persistencia en `localStorage`. No requiere Java ni Maven.
+Carpeta [`web/`](web/) dentro de la **raiz del repositorio** (no en `Desktop\cursor` a menos que haya clonado el repo ahi).
 
-```bash
-cd web && python3 -m http.server 8080
+**Windows (PowerShell o CMD)** — use la ruta donde este la carpeta `web` con `index.html`:
+
+```bat
+cd C:\Users\metas.asistenciales\Desktop\cursor\agenda-quimioterapia\web
+python -m http.server 8080
 ```
 
-Abra `http://localhost:8080` o directamente `web/index.html`. Detalles en [`web/README.md`](web/README.md).
+Esa ruta es valida **despues** de ejecutar `scripts\deploy-windows.bat` desde el codigo fuente (el script copia `web` dentro de `agenda-quimioterapia`).
+
+Si trabajo solo con el codigo fuente clonado (GitHub):
+
+```bat
+cd ruta\al\repo\marcelo\web
+python -m http.server 8080
+```
+
+Abra `http://localhost:8080`. Alternativa sin servidor: abrir `web\index.html` en el navegador. Detalles en [`web/README.md`](web/README.md).
 
 ## Requisitos
 

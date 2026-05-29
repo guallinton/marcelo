@@ -27,6 +27,10 @@ if exist "%DIST%\AgendaQuimioterapia.exe" (
     copy /Y "%DIST%\AgendaQuimioterapia.exe" "%APPDIR%\AgendaQuimioterapia.exe" >nul
 )
 
+if exist "web\index.html" (
+    xcopy /E /I /Y "web" "%APPDIR%\web" >nul
+)
+
 (
     echo @echo off
     echo cd /d "%%~dp0"
@@ -37,9 +41,13 @@ echo.
 echo Despliegue completado en:
 echo %APPDIR%
 if exist "%APPDIR%\AgendaQuimioterapia.exe" (
-    echo Ejecute AgendaQuimioterapia.exe para iniciar la agenda.
+    echo Escritorio: AgendaQuimioterapia.exe
 ) else (
-    echo Ejecute run-agenda.bat para iniciar la agenda.
+    echo Escritorio: run-agenda.bat
+)
+if exist "%APPDIR%\web\index.html" (
+    echo Web: cd /d "%APPDIR%\web" ^&^& python -m http.server 8080
+    echo Luego abra http://localhost:8080
 )
 
 endlocal

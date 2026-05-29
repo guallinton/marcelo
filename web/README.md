@@ -1,18 +1,43 @@
 # Agenda Quimioterapia — Versión web
 
-Aplicación de agenda oncológica en HTML, CSS y JavaScript (sin dependencias de compilación). El foco funcional está en la **visualización de la agenda** semanal y diaria.
+Aplicación de agenda oncológica en HTML, CSS y JavaScript. Calendario con [FullCalendar](https://github.com/fullcalendar/fullcalendar).
+
+## Ruta correcta en Windows
+
+La carpeta **`web` no suele estar** en:
+
+```text
+C:\Users\metas.asistenciales\Desktop\cursor\web   ← incorrecto (suele no existir)
+```
+
+Use una de estas rutas según su caso:
+
+| Situación | Carpeta donde ejecutar |
+|-----------|-------------------------|
+| Después de `scripts\deploy-windows.bat` | `C:\Users\metas.asistenciales\Desktop\cursor\agenda-quimioterapia\web` |
+| Repositorio clonado (código fuente) | `...\marcelo\web` (o el nombre de su carpeta del repo) |
+
+Compruebe que exista el archivo `index.html` en esa carpeta antes de arrancar el servidor.
 
 ## Cómo ejecutarla
 
-1. Abra `web/index.html` en un navegador moderno (Chrome, Firefox, Edge, Safari), **o**
-2. Sirva la carpeta con un servidor estático local:
+**Opción A — Servidor local (recomendado, FullCalendar por CDN):**
+
+```bat
+cd C:\Users\metas.asistenciales\Desktop\cursor\agenda-quimioterapia\web
+python -m http.server 8080
+```
+
+Luego: **http://localhost:8080**
+
+**Opción B — Sin servidor:** doble clic en `index.html` (puede fallar la carga de FullCalendar si el navegador bloquea CDN; en ese caso use la opción A).
+
+**Linux / macOS (desde el repo):**
 
 ```bash
 cd web
 python3 -m http.server 8080
 ```
-
-Luego visite `http://localhost:8080`.
 
 ## Usuarios de demostración
 
@@ -23,26 +48,10 @@ Luego visite `http://localhost:8080`.
 
 ## Funcionalidades
 
-- Agenda **semanal** (7 días desde el lunes de la semana seleccionada) y **diaria** (columnas por cama/butaca).
-- Tarjetas de turno con duración real (bloques de 30 min), colores por médico y detección de **conflictos** de cama (incluye 15 min de limpieza).
-- Barra lateral de médicos con búsqueda y filtro.
-- Panel de detalle, alta/edición/eliminación de turnos (según rol).
-- Persistencia en **localStorage** del navegador (`agenda_oncologia_web_v1`).
+- Vista semanal y diaria (FullCalendar timeGrid).
+- Filtro por médico, detalle de turno, conflictos de cama.
+- Persistencia en `localStorage` (`agenda_oncologia_web_v1`).
 
-## Estructura
+## Descargar solo la web desde GitHub
 
-```
-web/
-  index.html
-  css/app.css
-  js/config.js
-  js/ci-validator.js
-  js/storage.js
-  js/agenda.js
-  js/app.js
-```
-
-## Notas
-
-- Los datos no se sincronizan con la aplicación de escritorio Java; es un entorno web independiente con datos de ejemplo.
-- Para reiniciar la demo, borre en las herramientas de desarrollador la clave `agenda_oncologia_web_v1` en localStorage y recargue la página.
+Si no tiene el repo en el PC, descargue el ZIP de la rama del proyecto y entre en la carpeta `web` del ZIP extraído.
