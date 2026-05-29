@@ -59,8 +59,8 @@
         <input type="date" id="base-date" class="input-date" aria-label="Fecha base">
       </div>
       <div class="toolbar__views">
-        <button type="button" class="btn btn--tab is-active" data-view="week">Semanal</button>
-        <button type="button" class="btn btn--tab" data-view="day">Diaria</button>
+        <button type="button" class="btn btn--tab is-active" data-screen="list">Turnos ocupados</button>
+        <button type="button" class="btn btn--tab" data-screen="calendar" data-view="week">Calendario</button>
       </div>
       <div class="toolbar__metrics" id="agenda-metrics" aria-live="polite"></div>
       <button type="button" id="btn-new-appointment" class="btn btn--primary btn--sm">Nuevo turno</button>
@@ -91,7 +91,8 @@
           <p id="agenda-range" class="agenda-range"></p>
         </div>
         <div id="agenda-scroll" class="agenda-scroll">
-          <div id="agenda-root" class="agenda-root"></div>
+          <div id="turnos-list-panel" class="turnos-list-panel"></div>
+          <div id="agenda-root" class="agenda-root" hidden></div>
         </div>
       </section>
 

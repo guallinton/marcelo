@@ -5,6 +5,7 @@
 
   const state = {
     user: null,
+    screen: "list",
     view: "week",
     baseDate: startOfWeek(new Date()),
     selectedDoctorId: null,
@@ -19,6 +20,7 @@
   const loginForm = $("login-form");
   const loginError = $("login-error");
   const agendaRoot = $("agenda-root");
+  const turnosListPanel = $("turnos-list-panel");
   const doctorList = $("doctor-list");
   const detailContent = $("detail-content");
   const agendaMetrics = $("agenda-metrics");
@@ -77,12 +79,26 @@
   function showApp() {
     loginScreen.hidden = true;
     appScreen.hidden = false;
+    state.screen = "list";
+    state.selectedAppointmentId = null;
     $("session-user").textContent = state.user.fullName;
     const badge = $("session-role");
     badge.textContent = roleLabel(state.user.role);
     badge.className = "badge " + (state.user.role === "ENFERMERIA" ? "badge--nurse" : "badge--doctor");
     baseDateInput.value = toIsoDate(state.baseDate);
+    syncScreenTabs();
     refresh();
+  }
+
+  function syncScreenTabs() {
+    document.querySelectorAll("[data-screen]").forEach((btn) => {
+      const active =
+        btn.dataset.screen === state.screen ||
+        (state.screen === "calendar" && btn.dataset.screen === "calendar");
+      btn.classList.toggle("is-active", active);
+    });
+    turnosListPanel.hidden = state.screen !== "list";
+    agendaRoot.hidden = state.screen !== "calendar";
   }
 
   function rangeForView() {
@@ -115,15 +131,117 @@
 
   function refresh() {
     renderDoctors();
-    renderAgenda();
+    if (state.screen === "list") {
+      renderTurnosList();
+    } else {
+      renderAgenda();
+    }
     renderDetail();
     updateToolbar();
   }
 
+  function computeConflicts(appointments) {
+    const ids = new Set();
+    for (let i = 0; i < appointments.length; i++) {
+      for (let j = i + 1; j < appointments.length; j++) {
+        const a = appointments[i];
+        const b = appointments[j];
+        if (a.bedChair !== b.bedChair) continue;
+        const aStart = new Date(a.start);
+        const aEnd = storage.appointmentEndWithCleaning(a);
+        const bStart = new Date(b.start);
+        const bEnd = storage.appointmentEndWithCleaning(b);
+        if (aStart < bEnd && aEnd > bStart) {
+          ids.add(a.id);
+          ids.add(b.id);
+        }
+      }
+    }
+    return ids;
+  }
+
+  function renderTurnosList() {
+    const appointments = loadAppointments()
+      .filter((a) => !state.selectedDoctorId || a.doctorId === state.selectedDoctorId)
+      .sort((a, b) => new Date(a.start) - new Date(b.start));
+    const patients = storage.getPatients();
+    const doctors = storage.getDoctors();
+    const conflicts = computeConflicts(loadAppointments());
+
+    if (!appointments.length) {
+      turnosListPanel.innerHTML =
+        '<p class="turnos-list-empty">No hay turnos ocupados en este periodo. Use «Nuevo turno» o cambie la fecha.</p>';
+      agendaMetrics.innerHTML =
+        '<span class="metric-pill">Turnos ocupados: <strong>0</strong></span>';
+      return;
+    }
+
+    const rows = appointments
+      .map((appt) => {
+        const patient = patients.find((p) => p.id === appt.patientId);
+        const doctor = doctors.find((d) => d.id === appt.doctorId);
+        const protocol = cfg.protocols.find((p) => p.id === (patient && patient.protocolId));
+        const start = new Date(appt.start);
+        const end = storage.appointmentEnd(appt);
+        const dateStr = start.toLocaleDateString("es-UY", {
+          weekday: "short",
+          day: "numeric",
+          month: "short"
+        });
+        const patientName = patient
+          ? `${patient.firstName} ${patient.lastName}`
+          : "Paciente";
+        const color = cfg.doctorColors[
+          Math.max(0, doctors.findIndex((d) => d.id === appt.doctorId)) % cfg.doctorColors.length
+        ];
+        const conflict = conflicts.has(appt.id);
+        const selected = state.selectedAppointmentId === appt.id;
+        return (
+          `<tr class="turno-row${selected ? " is-selected" : ""}${conflict ? " is-conflict" : ""}" data-id="${appt.id}" style="--doctor-color:${color}">` +
+          `<td><p class="turno-row__patient">${viewApi.escapeHtml(patientName)}</p>` +
+          `<p class="turno-row__meta">CI ${viewApi.escapeHtml(patient ? patient.ci : "—")}</p></td>` +
+          `<td>${viewApi.escapeHtml(dateStr)}<br><strong>${formatTime(start)} – ${formatTime(end)}</strong></td>` +
+          `<td>${viewApi.escapeHtml(protocol ? protocol.label : "—")}<br><span class="turno-row__meta">${appt.durationMinutes} min</span></td>` +
+          `<td>${viewApi.escapeHtml(doctor ? doctor.fullName : "—")}</td>` +
+          `<td>Cama ${appt.bedChair}${conflict ? '<br><span class="turno-badge">Conflicto</span>' : ""}</td>` +
+          `</tr>`
+        );
+      })
+      .join("");
+
+    turnosListPanel.innerHTML =
+      '<table class="turnos-table" aria-label="Turnos ocupados por paciente">' +
+      "<thead><tr><th>Paciente</th><th>Fecha y hora</th><th>Protocolo</th><th>Medico</th><th>Cama</th></tr></thead>" +
+      "<tbody>" +
+      rows +
+      "</tbody></table>";
+
+    turnosListPanel.querySelectorAll(".turno-row").forEach((row) => {
+      row.addEventListener("click", () => {
+        state.selectedAppointmentId = Number(row.dataset.id);
+        detailPanel.classList.add("is-open");
+        refresh();
+      });
+    });
+
+    agendaMetrics.innerHTML =
+      `<span class="metric-pill">Turnos ocupados: <strong>${appointments.length}</strong></span>` +
+      (conflicts.size
+        ? `<span class="metric-pill">Conflictos: <strong style="color:#be123c">${conflicts.size}</strong></span>`
+        : "");
+  }
+
   function updateToolbar() {
-    agendaTitle.textContent = state.view === "week" ? "Agenda semanal" : "Agenda diaria";
+    agendaTitle.textContent =
+      state.screen === "list"
+        ? "Turnos ocupados por paciente"
+        : state.view === "week"
+          ? "Agenda semanal"
+          : "Agenda diaria";
     agendaRange.textContent =
-      viewApi.getViewTitle() || viewApi.formatRange(state.view, state.baseDate);
+      state.screen === "list"
+        ? viewApi.formatRange("week", state.baseDate)
+        : viewApi.getViewTitle() || viewApi.formatRange(state.view, state.baseDate);
     $("btn-new-appointment").disabled = !canWrite();
     $("btn-edit-appointment").disabled = !state.selectedAppointmentId || !selectedAppointmentEditable();
     $("btn-delete-appointment").disabled = !state.selectedAppointmentId || !canDelete();
@@ -391,6 +509,7 @@
     }
     state.user = user;
     state.baseDate = startOfWeek(new Date());
+    state.screen = "list";
     showApp();
   });
 
@@ -399,41 +518,62 @@
     showLogin();
   });
 
+  function shiftPeriod(deltaDays) {
+    state.baseDate = storage.addDays(state.baseDate, deltaDays);
+    baseDateInput.value = toIsoDate(state.baseDate);
+    if (state.screen === "calendar") {
+      viewApi.gotoDate(state.baseDate);
+    }
+  }
+
   $("btn-prev").addEventListener("click", () => {
-    viewApi.navigatePrev();
-    syncBaseDateFromCalendar();
+    if (state.screen === "calendar") {
+      viewApi.navigatePrev();
+      syncBaseDateFromCalendar();
+    } else {
+      shiftPeriod(-7);
+    }
     refresh();
   });
 
   $("btn-next").addEventListener("click", () => {
-    viewApi.navigateNext();
-    syncBaseDateFromCalendar();
+    if (state.screen === "calendar") {
+      viewApi.navigateNext();
+      syncBaseDateFromCalendar();
+    } else {
+      shiftPeriod(7);
+    }
     refresh();
   });
 
   $("btn-today").addEventListener("click", () => {
-    viewApi.navigateToday();
-    syncBaseDateFromCalendar();
+    state.baseDate = startOfWeek(new Date());
+    baseDateInput.value = toIsoDate(state.baseDate);
+    if (state.screen === "calendar") {
+      viewApi.navigateToday();
+      syncBaseDateFromCalendar();
+    }
     refresh();
   });
 
   baseDateInput.addEventListener("change", () => {
     const picked = parseInputDate(baseDateInput.value);
-    state.baseDate = state.view === "week" ? startOfWeek(picked) : picked;
+    state.baseDate = startOfWeek(picked);
     baseDateInput.value = toIsoDate(state.baseDate);
-    viewApi.gotoDate(state.baseDate);
+    if (state.screen === "calendar") {
+      viewApi.gotoDate(state.baseDate);
+    }
     refresh();
   });
 
-  document.querySelectorAll("[data-view]").forEach((btn) => {
+  document.querySelectorAll("[data-screen]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      document.querySelectorAll("[data-view]").forEach((b) => b.classList.remove("is-active"));
-      btn.classList.add("is-active");
-      state.view = btn.dataset.view;
-      if (state.view === "week") {
-        state.baseDate = startOfWeek(state.baseDate);
+      state.screen = btn.dataset.screen;
+      if (state.screen === "calendar") {
+        state.view = btn.dataset.view || "week";
+        viewApi.gotoDate(state.baseDate);
       }
-      baseDateInput.value = toIsoDate(state.baseDate);
+      syncScreenTabs();
       refresh();
     });
   });

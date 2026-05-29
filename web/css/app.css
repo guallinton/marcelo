@@ -387,8 +387,155 @@ textarea {
   padding: 12px;
 }
 
+.turnos-list-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.turnos-list-empty {
+  margin: 24px 0;
+  text-align: center;
+  color: var(--muted);
+}
+
+.turnos-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+  font-size: 0.88rem;
+}
+
+.turnos-table thead th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.turno-row {
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.turno-row td {
+  padding: 12px;
+  background: #fff;
+  border: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.turno-row td:first-child {
+  border-radius: 10px 0 0 10px;
+  border-left: 4px solid var(--doctor-color, var(--primary));
+}
+
+.turno-row td:last-child {
+  border-radius: 0 10px 10px 0;
+}
+
+.turno-row:hover td {
+  border-color: var(--primary);
+  box-shadow: 0 4px 14px rgba(26, 43, 60, 0.08);
+}
+
+.turno-row.is-selected td {
+  background: #f0fbff;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(14, 181, 225, 0.25);
+}
+
+.turno-row.is-conflict td {
+  background: #fff5f5;
+}
+
+.turno-row__patient {
+  font-weight: 700;
+  margin: 0 0 2px;
+}
+
+.turno-row__meta {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.turno-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: #fee2e2;
+  color: #be123c;
+}
+
 .agenda-root {
-  min-width: 900px;
+  min-width: 0;
+  height: 100%;
+  min-height: 480px;
+}
+
+.agenda-root #calendar,
+.fc-theme-agenda {
+  height: 100%;
+  --fc-border-color: var(--border);
+  --fc-today-bg-color: rgba(14, 181, 225, 0.08);
+  --fc-now-indicator-color: var(--accent);
+  --fc-page-bg-color: var(--surface);
+  font-family: inherit;
+}
+
+.fc .fc-timegrid-slot {
+  height: 3.25rem;
+}
+
+.fc .fc-col-header-cell-cushion,
+.fc .fc-timegrid-slot-label-cushion {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.fc-event-selected,
+.fc .fc-event-selected.fc-event-conflict {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.fc-event-conflict {
+  border-width: 2px !important;
+}
+
+.fc-custom-event {
+  padding: 2px 4px;
+  line-height: 1.25;
+  overflow: hidden;
+}
+
+.fc-custom-event__title {
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.fc-custom-event__meta,
+.fc-custom-event__doctor,
+.fc-event-time-custom {
+  font-size: 0.68rem;
+  opacity: 0.9;
+}
+
+.fc-custom-event__badge {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
 }
 
 .agenda-grid {
