@@ -30,6 +30,10 @@ if exist "%DIST%\AgendaQuimioterapia.exe" (
 if exist "web\index.html" (
     xcopy /E /I /Y "web" "%APPDIR%\web" >nul
 )
+if exist "iniciar-agenda-web.bat" (
+    copy /Y "iniciar-agenda-web.bat" "%TARGET%\iniciar-agenda-web.bat" >nul
+    copy /Y "iniciar-agenda-web.bat" "%APPDIR%\iniciar-agenda-web.bat" >nul
+)
 
 (
     echo @echo off
